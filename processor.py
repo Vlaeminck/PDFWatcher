@@ -419,9 +419,32 @@ def process_invoice(file_path):
 
     text = extract_text(file_path)
 
+    text = extract_text(file_path)
+
     if not text.strip():
-        print("No se encontró texto (incluso después del OCR). Moviendo a no reconocidas.", flush=True)
-        log_error_to_file(file_path, "SIN TEXTO", "El archivo no contiene capa de texto ni se pudo extraer texto mediante OCR.")
+        print("No se encontró texto. Intentando rescate con IA (Gemini)...", flush=True)
+        ai_data = extract_data_via_ai(file_path)
+        if ai_data and ai_data.get('cuit') and ai_data.get('numero_factura'):
+            cuit_cleaned = re.sub(r'\D', '', str(ai_data.get('cuit', '')))
+            supplier_found = _CUIT_INDEX.get(cuit_cleaned)
+            if not supplier_found:
+                supplier_found = ai_data.get('nombre_emisor', 'Proveedor Rescatado')
+            
+            invoice_number = ai_data.get('numero_factura')
+            invoice_date = None
+            if ai_data.get('fecha_emision'):
+                try:
+                    invoice_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
+                except Exception:
+                    pass
+                    
+            print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
+            new_filename = f"{supplier_found.lower()}-{invoice_number}-Rescatado-IA{ext}"
+            move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+            return
+            
+        print("No se encontró texto (ni con OCR ni con IA). Moviendo a no reconocidas.", flush=True)
+        log_error_to_file(file_path, "SIN TEXTO", "El archivo no contiene capa de texto ni se pudo extraer texto mediante OCR o IA.")
         move_to_unrecognized(file_path, f"Desconocido-sin-texto{ext}")
         return
 
@@ -469,15 +492,42 @@ def process_invoice(file_path):
             new_filename = f"{supplier_found.lower()}-{invoice_number}{ext}"
             move_to_processed(file_path, supplier_found, new_filename, invoice_date)
         else:
-            new_filename = f"{supplier_found}-sin-numero{ext}"
-            regex_used = data.get("invoice_regex", "None")
-            diagnosis = diagnose_error(text, file_path, supplier_found, regex_used)
-            log_error_to_file(file_path, "SIN NUMERO DE FACTURA", diagnosis)
-            move_to_unrecognized(file_path, new_filename)
+            print("  [INFO] Falló extracción de número. Intentando rescate con IA...", flush=True)
+            ai_data = extract_data_via_ai(file_path)
+            if ai_data and ai_data.get('numero_factura'):
+                invoice_number = ai_data['numero_factura']
+                print(f"  [OK] Numero rescatado por IA: {invoice_number}", flush=True)
+                new_filename = f"{supplier_found.lower()}-{invoice_number}-Rescatado-IA{ext}"
+                move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+            else:
+                new_filename = f"{supplier_found}-sin-numero{ext}"
+                regex_used = data.get("invoice_regex", "None")
+                diagnosis = diagnose_error(text, file_path, supplier_found, regex_used)
+                log_error_to_file(file_path, "SIN NUMERO DE FACTURA", diagnosis)
+                move_to_unrecognized(file_path, new_filename)
     else:
-        diagnosis = diagnose_error(text, file_path)
-        log_error_to_file(file_path, "PROVEEDOR NO RECONOCIDO", diagnosis)
-        move_to_unrecognized(file_path, f"Desconocido-sin-reconocer{ext}")
+        print("  [INFO] Falló identificación de proveedor. Intentando rescate con IA...", flush=True)
+        ai_data = extract_data_via_ai(file_path)
+        if ai_data and ai_data.get('cuit') and ai_data.get('numero_factura'):
+            cuit_cleaned = re.sub(r'\D', '', str(ai_data['cuit']))
+            supplier_found = _CUIT_INDEX.get(cuit_cleaned)
+            if not supplier_found:
+                supplier_found = ai_data.get('nombre_emisor', 'Proveedor Rescatado').replace('/', '-')
+                
+            invoice_number = ai_data['numero_factura']
+            invoice_date = None
+            if ai_data.get('fecha_emision'):
+                try:
+                    invoice_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
+                except Exception:
+                    pass
+            print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
+            new_filename = f"{supplier_found.lower()}-{invoice_number}-Rescatado-IA{ext}"
+            move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+        else:
+            diagnosis = diagnose_error(text, file_path)
+            log_error_to_file(file_path, "PROVEEDOR NO RECONOCIDO", diagnosis)
+            move_to_unrecognized(file_path, f"Desconocido-sin-reconocer{ext}")
 
 def diagnose_error(text, file_path, supplier_found=None, regex_used=None):
     if not text.strip():
@@ -630,3 +680,76 @@ def move_to_unrecognized(file_path, new_filename):
         print(f"No reconocido. Movido a: {dest_path}", flush=True)
     except Exception as e:
         print(f"Error moviendo archivo: {e}", flush=True)
+
+def extract_data_via_ai(file_path):
+    from config import AI_API_KEY
+    import json
+    
+    watcher_manager = None
+    try:
+        from watcher import watcher_manager
+    except Exception:
+        pass
+
+    if not AI_API_KEY or AI_API_KEY == "TU_API_KEY_AQUI":
+        print("  [INFO] Clave de API de IA no configurada. Saltando fallback.", flush=True)
+        return None
+        
+    try:
+        if watcher_manager:
+            watcher_manager.is_ai_processing = True
+            
+        import google.generativeai as genai
+        import pypdfium2 as pdfium
+        import PIL.Image
+        
+        genai.configure(api_key=AI_API_KEY)
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        
+        _, ext = os.path.splitext(file_path)
+        ext = ext.lower()
+        
+        # Leemos el archivo en memoria para no bloquearlo en Windows
+        with open(file_path, 'rb') as f:
+            file_data = f.read()
+            
+        import io
+        if ext in ['.png', '.jpg', '.jpeg']:
+            img = PIL.Image.open(io.BytesIO(file_data))
+            contents = [img]
+        elif ext == '.pdf':
+            doc = pdfium.PdfDocument(file_data)
+            bitmap = doc[0].render(scale=200/72)
+            img = bitmap.to_pil()
+            contents = [img]
+        else:
+            return None
+            
+        prompt = """
+        Eres un asistente experto en analizar facturas de Argentina.
+        Extrae la siguiente información de la imagen y devuelve ÚNICAMENTE un objeto JSON válido con este formato exacto:
+        {
+            "cuit": "el CUIT del emisor (11 digitos sin guiones)",
+            "nombre_emisor": "el nombre o razón social del emisor",
+            "numero_factura": "el número completo de la factura con formato XXXX-XXXXXXXX",
+            "fecha_emision": "la fecha de emisión en formato YYYY-MM-DD"
+        }
+        Si no encuentras alguno de los datos, coloca null en su valor sin comillas.
+        NO devuelvas explicaciones, marcadores markdown (```json) ni texto adicional, SOLAMENTE el diccionario JSON en texto plano.
+        """
+        contents.append(prompt)
+        
+        response = model.generate_content(contents)
+        text = response.text
+        
+        text = text.replace("```json", "").replace("```", "").strip()
+        data = json.loads(text)
+        return data
+            
+    except Exception as e:
+        print(f"Error usando IA de Gemini: {e}", flush=True)
+    finally:
+        if watcher_manager:
+            watcher_manager.is_ai_processing = False
+        
+    return None
