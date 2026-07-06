@@ -309,10 +309,14 @@ def update_config_suppliers():
         with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
             f.write(updated_content)
             
-        print(f"¡Éxito! config.py ha sido actualizado y enriquecido correctamente.")
+        msg = f"¡Éxito! config.py ha sido actualizado y enriquecido correctamente. {added_count} nuevos, {skipped_count} omitidos."
+        print(msg)
+        return {"success": True, "added": added_count, "skipped": skipped_count, "message": msg}
         
     except Exception as e:
-        print(f"Error al escribir en config.py: {e}")
+        msg = f"Error al escribir en config.py: {e}"
+        print(msg)
+        return {"success": False, "message": msg}
 
 if __name__ == "__main__":
     update_config_suppliers()

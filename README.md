@@ -15,6 +15,9 @@ Este proyecto es una herramienta automatizada para Windows que monitorea de form
 * **Log de Errores con Diagnóstico Inteligente:** Si un comprobante no puede ser procesado, se mueve a `Facturas_No_Reconocidas` y se registra un análisis detallado en `errores_procesamiento.txt` con la causa exacta (sin texto legible, proveedor no registrado, CUIT ausente en ARCA o falla en la expresión regular del número de factura) y la solución recomendada.
 * **Soporte OCR Integrado:** Aplica OCR con **Tesseract** de manera transparente si el archivo es una imagen o un PDF sin capa de texto.
 * **Sincronización Automática de Proveedores:** Permite actualizar de forma automática la base de datos de proveedores (`config.py`) a partir de archivos CSV oficiales de ARCA colocados en `CSV ARCA` mediante la ejecución de `update_suppliers.py`.
+* **Interfaz Web (Dashboard):** Una interfaz gráfica atractiva y moderna (`app.py`) para gestionar los procesos, iniciar el vigía e inspeccionar proveedores en tiempo real.
+* **Rescate Asistido por IA (Gemini):** Cuando las expresiones regulares u OCR tradicional fallan, interviene un agente inteligente con Google Gemini Flash Lite para intentar extraer proveedor, fecha y número de comprobante visualmente.
+* **Escaneo Automatizado y Silencioso:** Integración con NAPS2 que permite iniciar escaneos directamente desde la interfaz web. El escaneo ocurre de fondo (headless) sin robar el control del mouse y deposita los PDFs directamente para su procesamiento.
 
 ---
 
@@ -27,7 +30,12 @@ Este proyecto requiere instalar el software Tesseract en Windows:
   `C:\Program Files\Tesseract-OCR\tesseract.exe`
   *(De instalarlo en otra ruta, modifique la variable `TESSERACT_PATH` al inicio de `processor.py`)*.
 
-### 2. Dependencias de Python (`requirements.txt`)
+### 2. NAPS2 (Requerido para el botón Escáner Automático)
+Se utiliza para realizar los escaneos silenciosos desde la aplicación web sin interrumpir tu flujo de trabajo.
+* Se espera la instalación por defecto en: `C:\Program Files\NAPS2\NAPS2.Console.exe`
+* Puede descargarlo desde: [naps2.com](https://www.naps2.com/).
+
+### 3. Dependencias de Python (`requirements.txt`)
 Las librerías requeridas por el proyecto son:
 * `watchdog==4.0.1` - Monitoreo del sistema de archivos.
 * `pdfplumber==0.11.1` - Extracción directa de texto de PDFs.
@@ -42,12 +50,15 @@ Las librerías requeridas por el proyecto son:
 
 1. **Clonar o descargar el repositorio** en su máquina local.
 2. Instalar **Tesseract OCR** (ver sección de requisitos).
-3. **Instalar dependencias de Python:**
+3. **Instalar dependencias de Python y Sistema:**
    En Windows, simplemente haga doble clic en el archivo ejecutable **`setup.bat`**, o ejecútelo desde la consola:
    ```cmd
    setup.bat
    ```
-   Este archivo actualizará `pip` e instalará de forma automática todas las dependencias listadas en `requirements.txt`.
+   Este archivo actualizará `pip`, instalará todas las dependencias listadas en `requirements.txt` e intentará descargar Tesseract OCR y NAPS2 utilizando `winget` (si está disponible en su sistema).
+
+4. **Configurar API Key de IA (Opcional pero recomendado)**
+   Edite el archivo `config.py` y asigne su token a `AI_API_KEY = "tu-api-key"` para habilitar el motor de rescate avanzado con Gemini.
 
 ---
 
@@ -61,11 +72,14 @@ Si ha descargado sus listados de comprobantes de ARCA (Mis Comprobantes Recibido
    python update_suppliers.py
    ```
 
-### 2. Iniciar el Vigía
-Para iniciar el servicio de monitoreo en tiempo real, ejecute:
+### 2. Iniciar el Servidor Web (Dashboard)
+Para iniciar la aplicación, ejecute el servidor web Flask:
 ```bash
-python main.py
+python app.py
 ```
+Luego ingrese a `http://localhost:5000` en su navegador. Desde el dashboard podrá arrancar o detener el vigía, y lanzar escaneos automatizados.
+
+*(Alternativamente, puede iniciar solo el monitoreo de consola ejecutando `python main.py`)*
 * **Comprobantes Reconocidos:** Se renombrarán automáticamente al formato `proveedor-puntoVenta-numeroFactura.pdf` y se moverán a:
   `Facturas_Procesadas/<Año>/<Mes_Emisión>/<Proveedor>/`
 * **Comprobantes No Reconocidos:** Se moverán a `Facturas_No_Reconocidas/` y sus causas de fallo se registrarán en `Facturas_No_Reconocidas/errores_procesamiento.txt`.
