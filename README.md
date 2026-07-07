@@ -34,6 +34,7 @@ Este proyecto requiere instalar el software Tesseract en Windows:
 Se utiliza para realizar los escaneos silenciosos desde la aplicación web sin interrumpir tu flujo de trabajo.
 * Se espera la instalación por defecto en: `C:\Program Files\NAPS2\NAPS2.Console.exe`
 * Puede descargarlo desde: [naps2.com](https://www.naps2.com/).
+* **IMPORTANTE:** Una vez instalado, abre NAPS2 manualmente por primera vez y haz clic en **"Perfiles" -> "Nuevo"** para configurar y guardar tu escáner. Sin un perfil creado, el escaneo desde la web fallará.
 
 ### 3. Dependencias de Python (`requirements.txt`)
 Las librerías requeridas por el proyecto son:
@@ -54,6 +55,7 @@ Si es la primera vez que vas a usar el sistema, sigue estos **4 pasos estrictame
 1. Descarga o clona el repositorio.
 2. Haz doble clic en el archivo **`setup.bat`** (o ejecútalo desde tu consola).
 Este script instalará las librerías de Python requeridas y, si es posible, instalará Tesseract OCR y NAPS2 (programas base necesarios).
+3. **Abre NAPS2** (búscalo en el menú inicio de Windows) y crea un **Perfil** seleccionando tu escáner. Esto es obligatorio para que el escaneo automático funcione.
 
 ### Paso 2: Cargar tu CSV de ARCA
 Para que el sistema sepa reconocer a qué proveedor pertenece cada factura, debes darle un listado inicial:

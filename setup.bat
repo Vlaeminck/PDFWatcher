@@ -46,8 +46,9 @@ echo ===================================================
 echo Instalacion completada con exito.
 echo.
 echo PROXIMOS PASOS (MUY IMPORTANTE):
-echo 1. Descargue y coloque su archivo CSV de ARCA en la carpeta "CSV ARCA".
-echo 2. Ejecute el actualizador de proveedores: python update_suppliers.py
-echo 3. Inicie la aplicacion web: python app.py
+echo 1. Abra NAPS2 (instalado recientemente) y cree un "Perfil" seleccionando su escaner.
+echo 2. Descargue y coloque su archivo CSV de ARCA en la carpeta "CSV ARCA".
+echo 3. Ejecute el actualizador de proveedores: python update_suppliers.py
+echo 4. Inicie la aplicacion web: python app.py
 echo ===================================================
 pause
