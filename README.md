@@ -82,6 +82,7 @@ Al ejecutarlo, **se abrirá automáticamente una ventana de tu navegador** con e
 
 * **Motor de IA (Gemini):** Para habilitar el rescate de facturas borrosas con inteligencia artificial, edita el archivo `config.py` y asigne su token a `AI_API_KEY = "tu-api-key"`.
 * **Ruta de Tesseract/NAPS2:** Si instalaste estos programas en rutas diferentes a las estándar, ajusta las rutas en `processor.py` y en `app.py`.
+* **Sincronización en la Nube:** Para respaldar tus facturas procesadas y acceder a ellas desde cualquier lugar, la forma más sencilla, segura y sin complicaciones es instalar la aplicación oficial **Google Drive para Escritorio** (o OneDrive/Dropbox) y configurarla para que sincronice automáticamente la carpeta `Facturas_Procesadas` del proyecto.
 
 ---
 
