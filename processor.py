@@ -439,7 +439,8 @@ def process_invoice(file_path):
                     pass
                     
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
-            new_filename = f"{supplier_found.lower()}-{invoice_number}-Rescatado-IA{ext}"
+            invoice_formatted = invoice_number.replace('-', ' - ')
+            new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
             move_to_processed(file_path, supplier_found, new_filename, invoice_date)
             return
             
@@ -489,7 +490,8 @@ def process_invoice(file_path):
                 print(f"  [ADVERTENCIA] No se pudo extraer la fecha. Usando fecha actual.", flush=True)
 
         if invoice_number:
-            new_filename = f"{supplier_found.lower()}-{invoice_number}{ext}"
+            invoice_formatted = invoice_number.replace('-', ' - ')
+            new_filename = f"{invoice_formatted}{ext}"
             move_to_processed(file_path, supplier_found, new_filename, invoice_date)
         else:
             print("  [INFO] Falló extracción de número. Intentando rescate con IA...", flush=True)
@@ -497,7 +499,8 @@ def process_invoice(file_path):
             if ai_data and ai_data.get('numero_factura'):
                 invoice_number = ai_data['numero_factura']
                 print(f"  [OK] Numero rescatado por IA: {invoice_number}", flush=True)
-                new_filename = f"{supplier_found.lower()}-{invoice_number}-Rescatado-IA{ext}"
+                invoice_formatted = invoice_number.replace('-', ' - ')
+                new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
                 move_to_processed(file_path, supplier_found, new_filename, invoice_date)
             else:
                 new_filename = f"{supplier_found}-sin-numero{ext}"
@@ -522,7 +525,8 @@ def process_invoice(file_path):
                 except Exception:
                     pass
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
-            new_filename = f"{supplier_found.lower()}-{invoice_number}-Rescatado-IA{ext}"
+            invoice_formatted = invoice_number.replace('-', ' - ')
+            new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
             move_to_processed(file_path, supplier_found, new_filename, invoice_date)
         else:
             diagnosis = diagnose_error(text, file_path)
