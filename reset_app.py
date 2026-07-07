@@ -2,9 +2,25 @@ import os
 import shutil
 import re
 
-print("="*50)
-print("  PREPARANDO APP PARA INICIO LIMPIO (RESET)")
-print("="*50)
+import sys
+
+print("="*65)
+print(" ⚠️  ADVERTENCIA DE REINICIO DE FÁBRICA (RESET) ⚠️")
+print("="*65)
+print("ESTA ACCIÓN ES IRREVERSIBLE E IMPLICA LO SIGUIENTE:")
+print("1. Se eliminarán TODAS las facturas procesadas y pendientes.")
+print("2. Se borrarán los historiales de facturas no reconocidas.")
+print("3. Se vaciará la carpeta de CSV de ARCA.")
+print("4. Se eliminarán TODOS los proveedores registrados en config.py.")
+print("\nBásicamente, la aplicación volverá a estar completamente en blanco.")
+print("="*65)
+
+resp = input("\n¿Estás ABSOLUTAMENTE SEGURO de que deseas continuar? (escribe 'SI' para aceptar): ").strip()
+if resp != "SI":
+    print("\n[INFO] Operación cancelada de forma segura. No se ha borrado nada.")
+    sys.exit(0)
+
+print("\nProcediendo con el borrado...\n")
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
