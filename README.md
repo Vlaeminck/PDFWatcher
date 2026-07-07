@@ -59,7 +59,7 @@ Este script instalará las librerías de Python requeridas y, si es posible, ins
 
 ### Paso 2: Cargar tu CSV de ARCA
 Para que el sistema sepa reconocer a qué proveedor pertenece cada factura, debes darle un listado inicial:
-1. Descarga tu reporte de *Mis Comprobantes Recibidos* desde ARCA (en formato CSV).
+1. Descarga tu reporte de *Mis Comprobantes Recibidos* desde ARCA (en formato CSV). **Se recomienda descargar un histórico de 3 a 6 meses** para asegurar que el sistema memorice a todos tus proveedores recurrentes.
 2. Coloca ese archivo `.csv` directamente adentro de la carpeta **`CSV ARCA/`**.
 
 ### Paso 3: Sincronizar Proveedores
