@@ -14,7 +14,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max
 def count_files(directory):
     if not os.path.exists(directory):
         return 0
-    return sum(1 for root, dirs, files in os.walk(directory) for f in files)
+    return sum(1 for root, dirs, files in os.walk(directory) for f in files if f.lower() not in ['.gitkeep', '.gitignore', 'desktop.ini'])
 
 @app.route('/')
 def index():
