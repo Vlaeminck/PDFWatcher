@@ -144,5 +144,14 @@ def test_paint():
         return jsonify({"success": False, "message": f"Error: {e}"})
 
 if __name__ == '__main__':
+    import webbrowser
+    from threading import Timer
+
+    def open_browser():
+        webbrowser.open_new('http://127.0.0.1:5000/')
+
+    # Abre el navegador automáticamente tras 1 segundo
+    Timer(1, open_browser).start()
+
     # use_reloader=False prevents watchdog observer from starting twice if __name__ == '__main__':
     app.run(debug=True, port=5000, use_reloader=False)

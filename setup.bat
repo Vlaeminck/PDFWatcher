@@ -44,6 +44,10 @@ if %errorlevel% equ 0 (
 echo.
 echo ===================================================
 echo Instalacion completada con exito.
-echo Para iniciar el programa ejecute: python app.py
+echo.
+echo PROXIMOS PASOS (MUY IMPORTANTE):
+echo 1. Descargue y coloque su archivo CSV de ARCA en la carpeta "CSV ARCA".
+echo 2. Ejecute el actualizador de proveedores: python update_suppliers.py
+echo 3. Inicie la aplicacion web: python app.py
 echo ===================================================
 pause

@@ -46,43 +46,40 @@ Las librerías requeridas por el proyecto son:
 
 ---
 
-## 🛠️ Instalación y Configuración
+## 🛠️ Paso a Paso para Empezar (Muy Importante)
 
-1. **Clonar o descargar el repositorio** en su máquina local.
-2. Instalar **Tesseract OCR** (ver sección de requisitos).
-3. **Instalar dependencias de Python y Sistema:**
-   En Windows, simplemente haga doble clic en el archivo ejecutable **`setup.bat`**, o ejecútelo desde la consola:
-   ```cmd
-   setup.bat
-   ```
-   Este archivo actualizará `pip`, instalará todas las dependencias listadas en `requirements.txt` e intentará descargar Tesseract OCR y NAPS2 utilizando `winget` (si está disponible en su sistema).
+Si es la primera vez que vas a usar el sistema, sigue estos **4 pasos estrictamente en orden**. La aplicación **NO funcionará** si intentas iniciarla sin antes cargar tus proveedores.
 
-4. **Configurar API Key de IA (Opcional pero recomendado)**
-   Edite el archivo `config.py` y asigne su token a `AI_API_KEY = "tu-api-key"` para habilitar el motor de rescate avanzado con Gemini.
+### Paso 1: Instalar dependencias iniciales
+1. Descarga o clona el repositorio.
+2. Haz doble clic en el archivo **`setup.bat`** (o ejecútalo desde tu consola).
+Este script instalará las librerías de Python requeridas y, si es posible, instalará Tesseract OCR y NAPS2 (programas base necesarios).
 
----
+### Paso 2: Cargar tu CSV de ARCA
+Para que el sistema sepa reconocer a qué proveedor pertenece cada factura, debes darle un listado inicial:
+1. Descarga tu reporte de *Mis Comprobantes Recibidos* desde ARCA (en formato CSV).
+2. Coloca ese archivo `.csv` directamente adentro de la carpeta **`CSV ARCA/`**.
 
-## 💻 Instrucciones de Uso
+### Paso 3: Sincronizar Proveedores
+Una vez que tu CSV esté en la carpeta, debes actualizar la base de datos del sistema. Abre la consola en la carpeta del proyecto y ejecuta:
+```bash
+python update_suppliers.py
+```
+*(Sin esto, tu sistema no tendrá registrados proveedores para reconocer las facturas).*
 
-### 1. Actualizar e importar Proveedores desde ARCA (Opcional)
-Si ha descargado sus listados de comprobantes de ARCA (Mis Comprobantes Recibidos/Emitidos) en formato CSV:
-1. Coloque los archivos `.csv` en la carpeta `CSV ARCA/`.
-2. Ejecute el actualizador para dar de alta nuevos proveedores y enriquecer palabras clave automáticamente:
-   ```bash
-   python update_suppliers.py
-   ```
-
-### 2. Iniciar el Servidor Web (Dashboard)
-Para iniciar la aplicación, ejecute el servidor web Flask:
+### Paso 4: Iniciar la Aplicación
+Con los proveedores ya cargados, ahora sí puedes arrancar el programa:
 ```bash
 python app.py
 ```
-Luego ingrese a `http://localhost:5000` en su navegador. Desde el dashboard podrá arrancar o detener el vigía, y lanzar escaneos automatizados.
+Al ejecutarlo, **se abrirá automáticamente una ventana de tu navegador** con el panel de control (Dashboard). Desde ahí podrás activar el vigía para que empiece a organizar tus PDF, o bien iniciar escaneos manuales.
 
-*(Alternativamente, puede iniciar solo el monitoreo de consola ejecutando `python main.py`)*
-* **Comprobantes Reconocidos:** Se renombrarán automáticamente al formato `proveedor-puntoVenta-numeroFactura.pdf` y se moverán a:
-  `Facturas_Procesadas/<Año>/<Mes_Emisión>/<Proveedor>/`
-* **Comprobantes No Reconocidos:** Se moverán a `Facturas_No_Reconocidas/` y sus causas de fallo se registrarán en `Facturas_No_Reconocidas/errores_procesamiento.txt`.
+---
+
+### ⚙️ Configuraciones Opcionales Recomendadas
+
+* **Motor de IA (Gemini):** Para habilitar el rescate de facturas borrosas con inteligencia artificial, edita el archivo `config.py` y asigne su token a `AI_API_KEY = "tu-api-key"`.
+* **Ruta de Tesseract/NAPS2:** Si instalaste estos programas en rutas diferentes a las estándar, ajusta las rutas en `processor.py` y en `app.py`.
 
 ---
 
