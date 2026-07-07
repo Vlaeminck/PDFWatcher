@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDFWatcher - Gestión de Facturas</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-file-invoice-dollar logo-icon"></i>
+                <h2>PDFWatcher</h2>
+            </div>
+            
+            <ul class="nav-links">
+                <li class="active" data-tab="dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Panel General</span>
+                </li>
+                <li data-tab="processed">
+                    <i class="fa-solid fa-file-circle-check"></i>
+                    <span>Facturas Procesadas</span>
+                </li>
+                <li data-tab="suppliers">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Proveedores</span>
+                </li>
+                <li data-tab="upload">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Cargar CSV</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Toast Notifications Container -->
+            <div id="toast-container" class="toast-container"></div>
+
+            <!-- Tab: Dashboard -->
+            <section id="tab-dashboard" class="tab-pane active fade-in">
+                <header class="section-header">
+                    <h1>Panel General</h1>
+                    <p>Monitoreo y estadísticas del procesamiento de facturas.</p>
+                </header>
+
+                <!-- Watcher Controls -->
+                <div class="glass-card watcher-control-panel">
+                    <div class="watcher-status">
+                        <h3>Estado del Vigía</h3>
+                        <div class="status-badge" id="watcher-status-badge">
+                            <span class="pulse-dot"></span>
+                            <span id="watcher-status-text">Desconocido</span>
+                        </div>
+                    </div>
+                    <div class="watcher-actions">
+                        <button id="btn-test-paint" class="btn btn-secondary" style="background-color: #6c757d;">
+                            <i class="fa-solid fa-palette"></i> Test Paint
+                        </button>
+                        <button id="btn-open-scanner" class="btn btn-secondary">
+                            <i class="fa-solid fa-print"></i> Escáner Automático
+                        </button>
+                        <button id="btn-start-watcher" class="btn btn-primary">
+                            <i class="fa-solid fa-play"></i> Iniciar
+                        </button>
+                        <button id="btn-stop-watcher" class="btn btn-danger">
+                            <i class="fa-solid fa-stop"></i> Detener
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Progress Bar (Hidden by default) -->
+                <div id="progress-container" class="glass-card" style="display: none; margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase;">Procesando Lote Inicial...</span>
+                        <span id="progress-text" style="font-weight: 600;">0 / 0</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+
+                <!-- AI Processing Indicator (Hidden by default) -->
+                <div id="ai-processing-indicator" class="glass-card" style="display: none; margin-bottom: 2rem; background: linear-gradient(135deg, rgba(74,144,226,0.1), rgba(155,89,182,0.1)); border-left: 4px solid var(--accent-primary);">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div class="ai-robot-icon" style="font-size: 2rem; color: var(--accent-primary);">
+                            <i class="fa-solid fa-robot fa-bounce"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin-bottom: 0.2rem; color: var(--accent-primary);">IA Analizando Documento...</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">Gemini está leyendo una factura difícil. Esto puede tardar unos segundos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid">
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon pending-icon">
+                            <i class="fa-solid fa-clock"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>A Procesar</h3>
+                            <p class="stat-number" id="stat-pending">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon processed-icon">
+                            <i class="fa-solid fa-check-circle"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>Procesadas</h3>
+                            <p class="stat-number" id="stat-processed">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card stat-card">
+                        <div class="stat-icon unrecognized-icon">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>No Reconocidas</h3>
+                            <p class="stat-number" id="stat-unrecognized">0</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Suppliers -->
+            <section id="tab-suppliers" class="tab-pane fade-in" style="display: none;">
+                <header class="section-header">
+                    <h1>Proveedores Configurados</h1>
+                    <p>Lista de proveedores detectados y sus reglas de coincidencia.</p>
+                </header>
+
+                <div class="glass-card full-height-card">
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="search-suppliers" placeholder="Filtrar proveedores por nombre o CUIT...">
+                        </div>
+                        <div class="toolbar-actions">
+                            <span id="supplier-count" class="badge">0 proveedores</span>
+                            <button id="btn-refresh-suppliers" class="btn btn-secondary btn-icon">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre del Proveedor</th>
+                                    <th>Palabras Clave (Keywords)</th>
+                                    <th>Regex de Factura</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suppliers-table-body">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-results-msg" class="empty-state" style="display: none;">
+                        <i class="fa-regular fa-face-frown-open"></i>
+                        <p>No se encontraron proveedores que coincidan con la búsqueda.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Processed Invoices -->
+            <section id="tab-processed" class="tab-pane fade-in" style="display: none;">
+                <header class="section-header">
+                    <h1>Facturas Procesadas</h1>
+                    <p>Historial de facturas que han sido procesadas exitosamente.</p>
+                </header>
+
+                <div class="glass-card full-height-card">
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="search-processed" placeholder="Filtrar por proveedor o nombre de archivo...">
+                        </div>
+                        <div class="toolbar-actions">
+                            <span id="processed-count" class="badge">0 facturas</span>
+                            <button id="btn-refresh-processed" class="btn btn-secondary btn-icon">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div id="processed-tree-container" class="tree-container">
+                            <!-- Dynamic tree content -->
+                        </div>
+                    </div>
+                    <div id="no-processed-msg" class="empty-state" style="display: none;">
+                        <i class="fa-regular fa-folder-open"></i>
+                        <p>No se encontraron facturas procesadas.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Upload CSV -->
+            <section id="tab-upload" class="tab-pane fade-in" style="display: none;">
+                <header class="section-header">
+                    <h1>Cargar CSV de ARCA</h1>
+                    <p>Sube los comprobantes exportados de ARCA para actualizar los proveedores y extraer CAEs.</p>
+                </header>
+
+                <div class="glass-card upload-card">
+                    <div class="upload-area" id="drop-zone">
+                        <div class="upload-icon-container">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <h3>Arrastra y suelta tu archivo CSV aquí</h3>
+                        <p>o</p>
+                        <label for="file-upload" class="btn btn-outline">Seleccionar archivo</label>
+                        <input type="file" id="file-upload" accept=".csv" style="display: none;">
+                        <p class="file-hint">Solo se admiten archivos .csv de ARCA</p>
+                    </div>
+                    
+                    <div id="upload-status" class="upload-status" style="display: none;">
+                        <div class="loader"></div>
+                        <p>Procesando e identificando nuevos proveedores...</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para Vista Previa -->
+    <div id="file-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Visor de Documento</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <iframe id="modal-iframe" src="" frameborder="0" width="100%" height="600px"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
