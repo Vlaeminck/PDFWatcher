@@ -10,7 +10,11 @@ venv/
 *.sqlite3
 .vscode/
 .idea/
-Facturas_A_Procesar/
-Facturas_No_Reconocidas/
-Facturas_Procesadas/
-CSV ARCA/
+Facturas_A_Procesar/*
+!Facturas_A_Procesar/.gitkeep
+Facturas_No_Reconocidas/*
+!Facturas_No_Reconocidas/.gitkeep
+Facturas_Procesadas/*
+!Facturas_Procesadas/.gitkeep
+CSV ARCA/*
+!CSV ARCA/.gitkeep
