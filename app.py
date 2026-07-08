@@ -134,14 +134,7 @@ def open_scanner():
         return jsonify({"success": True, "message": "Iniciando escaneo silencioso con NAPS2..."})
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {e}"})
-@app.route('/api/test_paint', methods=['POST'])
-def test_paint():
-    import os
-    try:
-        os.startfile('mspaint.exe')
-        return jsonify({"success": True, "message": "Paint abierto"})
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Error: {e}"})
+
 
 if __name__ == '__main__':
     import webbrowser
@@ -149,47 +142,82 @@ if __name__ == '__main__':
     import config
     import sys
     import os
+    import subprocess
+
+    def check_and_install_dependencies():
+        tesseract_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        naps2_path = r"C:\Program Files\NAPS2\NAPS2.Console.exe"
+        
+        missing = []
+        if not os.path.exists(tesseract_path):
+            missing.append(("Tesseract OCR", "UB-Mannheim.TesseractOCR"))
+        if not os.path.exists(naps2_path):
+            missing.append(("NAPS2", "NAPS2.NAPS2"))
+            
+        if missing:
+            print("\n" + "="*65)
+            print("⏳ [Instalación Automática] Descargando dependencias del sistema")
+            print("="*65)
+            for name, pkg_id in missing:
+                print(f"Descargando e instalando {name} (por favor espere)...")
+                try:
+                    subprocess.run(["winget", "install", "--id", pkg_id, "-e", "--accept-package-agreements", "--accept-source-agreements", "--silent"], check=True)
+                    print(f"[✔] {name} instalado correctamente.")
+                except Exception as e:
+                    print(f"[X] Error instalando {name}. Puede que requiera instalación manual. Error: {e}")
+            print("="*65 + "\n")
+
+    check_and_install_dependencies()
 
     # Preguntar por la API Key si no está configurada
     if not getattr(config, 'AI_API_KEY', '').strip():
-        print("\n" + "="*65)
-        print("🤖 [Opcional] Rescate con Inteligencia Artificial (Gemini)")
-        print("="*65)
-        print("¿Deseas configurar una clave API de Gemini para poder leer facturas")
-        print("borrosas o difíciles automáticamente?")
-        print("\n[SEGURIDAD]: Esta clave se guarda EXCLUSIVAMENTE a nivel local en tu")
-        print("computadora (en el archivo config.py). NO se subirá a ningún lado,")
-        print("NO quedará expuesta en la web, y respeta todas las normas de privacidad.")
-        print("Tus datos sensibles nunca saldrán de tu PC de forma insegura.")
-        print("="*65)
-        
-        resp = input("¿Tienes una clave y deseas usarla? (S/N): ").strip().lower()
-        if resp == 's':
-            api_key = input("Pega tu API Key de Gemini: ").strip()
-            if api_key:
-                try:
-                    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.py')
-                    with open(config_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    
-                    if 'AI_API_KEY' in content:
-                        import re
-                        content = re.sub(r'AI_API_KEY\s*=\s*["\'].*?["\']', f'AI_API_KEY = "{api_key}"', content)
-                    else:
-                        content = content.replace("import os", f'import os\n\nAI_API_KEY = "{api_key}"\n', 1)
-                    
-                    with open(config_path, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    print("\n[✔] ¡Excelente! Clave guardada de forma segura en config.py.")
-                    
-                    # Cargarla en memoria para esta ejecución
-                    config.AI_API_KEY = api_key
-                except Exception as e:
-                    print(f"\n[X] Error al guardar la clave: {e}")
+        try:
+            # En modo --windowed con PyInstaller, sys.stdin no existe y lanza RuntimeError
+            print("\n" + "="*65)
+            print("🤖 [Opcional] Rescate con Inteligencia Artificial (Gemini)")
+            print("="*65)
+            print("¿Deseas configurar una clave API de Gemini para poder leer facturas")
+            print("borrosas o difíciles automáticamente?")
+            print("\n[SEGURIDAD]: Esta clave se guarda EXCLUSIVAMENTE a nivel local en tu")
+            print("computadora (en el archivo config.py). NO se subirá a ningún lado,")
+            print("NO quedará expuesta en la web, y respeta todas las normas de privacidad.")
+            print("Tus datos sensibles nunca saldrán de tu PC de forma insegura.")
+            print("="*65)
+            
+            resp = input("¿Tienes una clave y deseas usarla? (S/N): ").strip().lower()
+            if resp == 's':
+                api_key = input("Pega tu API Key de Gemini: ").strip()
+                if api_key:
+                    try:
+                        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.py')
+                        with open(config_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        
+                        if 'AI_API_KEY' in content:
+                            import re
+                            content = re.sub(r'AI_API_KEY\s*=\s*["\'].*?["\']', f'AI_API_KEY = "{api_key}"', content)
+                        else:
+                            content = content.replace("import os", f'import os\n\nAI_API_KEY = "{api_key}"\n', 1)
+                        
+                        with open(config_path, 'w', encoding='utf-8') as f:
+                            f.write(content)
+                        print("\n[✔] ¡Excelente! Clave guardada de forma segura en config.py.")
+                        
+                        # Cargarla en memoria para esta ejecución
+                        config.AI_API_KEY = api_key
+                    except Exception as e:
+                        print(f"\n[X] Error al guardar la clave: {e}")
+                else:
+                    print("\n[!] No ingresaste ninguna clave. Continuando sin IA...")
             else:
-                print("\n[!] No ingresaste ninguna clave. Continuando sin IA...")
-        else:
-            print("\n[!] Entendido. Continuando sin IA. (Puedes agregarla luego manualmente en config.py)")
+                print("\n[!] Entendido. Continuando sin IA. (Puedes agregarla luego manualmente en config.py)")
+        except RuntimeError as e:
+            if "lost sys.stdin" in str(e):
+                pass # Ignorar el error si estamos en modo --windowed sin consola
+            else:
+                print(f"Error de input: {e}")
+        except Exception:
+            pass # Ignorar otros errores de stdin
             
     print("\nIniciando la aplicación web...")
 

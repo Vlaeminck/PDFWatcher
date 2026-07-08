@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnStart = document.getElementById('btn-start-watcher');
     const btnStop = document.getElementById('btn-stop-watcher');
     const btnScanner = document.getElementById('btn-open-scanner');
-    const btnPaint = document.getElementById('btn-test-paint');
+
     const statusText = document.getElementById('watcher-status-text');
     const statusBadge = document.getElementById('watcher-status-badge');
 
@@ -182,21 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (btnPaint) {
-        btnPaint.addEventListener('click', async () => {
-            try {
-                const res = await fetch('/api/test_paint', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    showToast(data.message, 'success');
-                } else {
-                    showToast("Error al abrir Paint", 'error');
-                }
-            } catch (e) {
-                showToast("Error de conexión con Paint", 'error');
-            }
-        });
-    }
+
 
     // --- Suppliers Tab ---
     const suppliersTableBody = document.getElementById('suppliers-table-body');

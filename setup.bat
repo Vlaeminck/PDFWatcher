@@ -7,10 +7,28 @@ echo.
 :: Verificar si Python esta instalado
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python no esta instalado o no esta en el PATH del sistema.
-    echo Por favor, instale Python (version 3.8 o superior) antes de continuar.
+    echo [ADVERTENCIA] Python no esta instalado o no esta en el PATH del sistema.
+    echo Intentando instalar Python mediante winget...
+    winget --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo [ERROR] No se encontro winget. Por favor, instale Python (3.8 o superior) manualmente desde python.org.
+        pause
+        exit /b 1
+    )
+    winget install --id Python.Python.3.11 -e --accept-package-agreements --accept-source-agreements --silent
+    if %errorlevel% neq 0 (
+        echo [ERROR] Hubo un error al instalar Python con winget. Instale manualmente.
+        pause
+        exit /b 1
+    )
+    echo.
+    echo ===================================================
+    echo [ATENCION] Python se ha instalado correctamente.
+    echo Para que los cambios surtan efecto, DEBE CERRAR ESTA VENTANA 
+    echo Y VOLVER A EJECUTAR setup.bat.
+    echo ===================================================
     pause
-    exit /b 1
+    exit /b 0
 )
 
 echo [1/4] Actualizando pip...
