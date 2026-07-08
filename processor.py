@@ -23,6 +23,7 @@ def get_tesseract():
 
 def extract_text_via_ocr_image(image_path):
     """Aplica OCR a un archivo de imagen directamente."""
+    img = None
     try:
         pytesseract = get_tesseract()
         img = Image.open(image_path)
@@ -32,10 +33,14 @@ def extract_text_via_ocr_image(image_path):
     except Exception as e:
         print(f"Error haciendo OCR en la imagen {image_path}: {e}", flush=True)
         return ""
+    finally:
+        if img:
+            img.close()
 
 def extract_text_via_ocr_pdf(pdf_path):
     """Convierte páginas de PDF a imagen y aplica OCR."""
     text_parts = []
+    doc = None
     try:
         pytesseract = get_tesseract()
         doc = pdfium.PdfDocument(pdf_path)
@@ -47,6 +52,9 @@ def extract_text_via_ocr_pdf(pdf_path):
             text_parts.append(text)
     except Exception as e:
         print(f"Error haciendo OCR en el PDF {pdf_path}: {e}", flush=True)
+    finally:
+        if doc:
+            doc.close()
     return "\n".join(text_parts).lower()
 
 def extract_text_from_pdf(pdf_path):
@@ -419,8 +427,6 @@ def process_invoice(file_path):
 
     text = extract_text(file_path)
 
-    text = extract_text(file_path)
-
     if not text.strip():
         print("No se encontró texto. Intentando rescate con IA (Gemini)...", flush=True)
         ai_data = extract_data_via_ai(file_path)
@@ -736,9 +742,11 @@ def extract_data_via_ai(file_path):
             "cuit": "el CUIT del emisor (11 digitos sin guiones)",
             "nombre_emisor": "el nombre o razón social del emisor",
             "numero_factura": "el número completo de la factura con formato XXXX-XXXXXXXX",
-            "fecha_emision": "la fecha de emisión en formato YYYY-MM-DD"
+            "fecha_emision": "la fecha de emisión en formato YYYY-MM-DD",
+            "keywords_optimizadas": ["palabra1", "palabra2"]
         }
         Si no encuentras alguno de los datos, coloca null en su valor sin comillas.
+        Para keywords_optimizadas, extrae 1 o 2 palabras clave únicas y características del emisor (ej. nombre comercial corto) que sirvan para identificar a este proveedor en el futuro. Evita palabras genéricas como "factura" o "SA".
         NO devuelvas explicaciones, marcadores markdown (```json) ni texto adicional, SOLAMENTE el diccionario JSON en texto plano.
         """
         contents.append(prompt)
@@ -748,6 +756,10 @@ def extract_data_via_ai(file_path):
         
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
+        
+        if data and data.get('nombre_emisor') and data.get('keywords_optimizadas'):
+            save_ai_supplier(data['nombre_emisor'], data.get('cuit'), data['keywords_optimizadas'])
+            
         return data
             
     except Exception as e:
@@ -757,3 +769,48 @@ def extract_data_via_ai(file_path):
             watcher_manager.is_ai_processing = False
         
     return None
+
+def save_ai_supplier(nombre, cuit, keywords):
+    import os
+    import json
+    import re
+    from update_suppliers import format_cuit
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    suppliers_file = os.path.join(base_dir, "suppliers.json")
+    
+    try:
+        suppliers = {}
+        if os.path.exists(suppliers_file):
+            with open(suppliers_file, 'r', encoding='utf-8') as f:
+                suppliers = json.load(f)
+                
+        final_keywords = []
+        if isinstance(keywords, list):
+            final_keywords.extend([str(k).lower() for k in keywords])
+            
+        if cuit:
+            cuit_digits = re.sub(r'\D', '', str(cuit))
+            if len(cuit_digits) == 11:
+                cuit_fmt = format_cuit(cuit_digits)
+                final_keywords.extend([cuit_digits, cuit_fmt])
+                
+        final_keywords.append(nombre.lower())
+        final_keywords = list(dict.fromkeys(final_keywords))
+        
+        if nombre not in suppliers:
+            suppliers[nombre] = {
+                "keywords": final_keywords,
+                "invoice_regex": r"(\d{4,5}\s*-\s*\d{8})"
+            }
+            with open(suppliers_file, 'w', encoding='utf-8') as f:
+                json.dump(suppliers, f, indent=4, ensure_ascii=False)
+            print(f"  [IA] Proveedor '{nombre}' guardado en suppliers.json con keywords optimizadas para futuros escaneos.", flush=True)
+            
+            from config import SUPPLIERS
+            SUPPLIERS[nombre] = suppliers[nombre]
+            
+            global _CUIT_INDEX
+            _CUIT_INDEX = build_cuit_to_supplier_map()
+    except Exception as e:
+        print(f"Error guardando proveedor de IA: {e}", flush=True)

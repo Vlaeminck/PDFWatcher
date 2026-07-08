@@ -115,12 +115,20 @@ def stop_watcher():
     success, msg = watcher_manager.stop()
     return jsonify({"success": success, "message": msg})
 
+import threading
+
+scanning_lock = threading.Lock()
+
 @app.route('/api/open_scanner', methods=['POST'])
 def open_scanner():
     import subprocess
     import os
     import time
     from config import INPUT_FOLDER
+    
+    if not scanning_lock.acquire(blocking=False):
+        return jsonify({"success": False, "message": "El escáner ya está en uso. Por favor espera a que termine el escaneo actual."})
+        
     try:
         # Generar nombre de archivo único
         filename = f"Escáner_{time.strftime('%Y%m%d_%H%M%S')}.pdf"
@@ -128,10 +136,22 @@ def open_scanner():
         
         naps2_path = r"C:\Program Files\NAPS2\NAPS2.Console.exe"
         
+        # Iniciar el vigía si no estaba corriendo (durará 5 min sin actividad)
+        watcher_manager.start()
+        
+        def run_scanner():
+            try:
+                subprocess.run([naps2_path, '-o', output_path])
+            finally:
+                scanning_lock.release()
+                
         # Ejecutar de fondo sin bloquear el servidor web
-        subprocess.Popen([naps2_path, '-o', output_path])
+        thread = threading.Thread(target=run_scanner)
+        thread.start()
+        
         return jsonify({"success": True, "message": "Iniciando escaneo silencioso con NAPS2..."})
     except Exception as e:
+        scanning_lock.release()
         return jsonify({"success": False, "message": f"Error: {e}"})
 
 

@@ -46,9 +46,9 @@ class WatcherManager:
         
     def _auto_stop_worker(self):
         while self.is_running or self.is_processing_batch:
-            # Si pasaron más de 60 segundos sin actividad
-            if time.time() - self.last_activity_time > 60:
-                print("Inactividad detectada (1 min). Deteniendo el vigía automáticamente.", flush=True)
+            # Si pasaron más de 300 segundos (5 minutos) sin actividad
+            if time.time() - self.last_activity_time > 300:
+                print("Inactividad detectada (5 min). Deteniendo el vigía automáticamente.", flush=True)
                 self.stop()
                 break
             time.sleep(5)
