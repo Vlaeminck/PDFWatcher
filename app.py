@@ -7,8 +7,7 @@ from update_suppliers import update_config_suppliers
 import config
 
 app = Flask(__name__)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, "CSV ARCA")
+app.config['UPLOAD_FOLDER'] = config.CSV_ARCA_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max
 
 def count_files(directory):
@@ -155,13 +154,26 @@ if __name__ == '__main__':
             missing.append(("NAPS2", "NAPS2.NAPS2"))
             
         if missing:
+            names = ", ".join([name for name, _ in missing])
+            try:
+                import ctypes
+                msg = f"PDFWatcher necesita instalar componentes adicionales para funcionar correctamente:\n\n{names}\n\nSe abrirá una ventana de consola (pantalla negra) mostrando el progreso de la descarga e instalación. ¡NO LA CIERRES!\nPor favor, acepta los permisos de administrador (UAC) si Windows te los pide.\n\nEl programa se abrirá automáticamente al terminar. ¡Gracias por tu paciencia!"
+                ctypes.windll.user32.MessageBoxW(0, msg, "Instalando Dependencias de PDFWatcher", 0x40 | 0x0)
+            except Exception:
+                pass
+            
             print("\n" + "="*65)
             print("⏳ [Instalación Automática] Descargando dependencias del sistema")
             print("="*65)
             for name, pkg_id in missing:
                 print(f"Descargando e instalando {name} (por favor espere)...")
                 try:
-                    subprocess.run(["winget", "install", "--id", pkg_id, "-e", "--accept-package-agreements", "--accept-source-agreements", "--silent"], check=True)
+                    # En modo --windowed, forzamos la creacion de una consola visible para que el usuario vea el progreso
+                    creationflags = 0
+                    if hasattr(subprocess, 'CREATE_NEW_CONSOLE'):
+                        creationflags = subprocess.CREATE_NEW_CONSOLE
+                        
+                    subprocess.run(["winget", "install", "--id", pkg_id, "-e", "--accept-package-agreements", "--accept-source-agreements"], check=True, creationflags=creationflags)
                     print(f"[✔] {name} instalado correctamente.")
                 except Exception as e:
                     print(f"[X] Error instalando {name}. Puede que requiera instalación manual. Error: {e}")

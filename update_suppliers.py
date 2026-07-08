@@ -268,53 +268,19 @@ def update_config_suppliers():
             "invoice_regex": s_data.get("invoice_regex", r"(\d{4,5}\s*-\s*\d{8})")
         }
         
-    # 5. Escribir los cambios en config.py
-    if not os.path.exists(CONFIG_PATH):
-        print(f"Error: No se encontró config.py en {CONFIG_PATH}")
-        return
-        
+    # 5. Escribir los cambios en suppliers.json
+    SUPPLIERS_PATH = os.path.join(BASE_DIR, "suppliers.json")
     try:
-        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-            content = f.read()
+        import json
+        with open(SUPPLIERS_PATH, 'w', encoding='utf-8') as f:
+            json.dump(final_suppliers, f, indent=4, ensure_ascii=False)
             
-        idx = content.find("SUPPLIERS = {")
-        if idx == -1:
-            idx = content.find("SUPPLIERS =")
-            
-        if idx != -1:
-            header = content[:idx]
-        else:
-            print("No se pudo localizar la variable SUPPLIERS en config.py. Se agregará al final.")
-            header = content + "\n\n"
-            
-        new_block = "SUPPLIERS = {\n"
-        for s_name, s_data in final_suppliers.items():
-            new_block += f"    {repr(s_name)}: {{\n"
-            kws = s_data.get("keywords", [])
-            kws_str = ", ".join(f"{repr(kw)}" for kw in kws)
-            new_block += f"        \"keywords\": [{kws_str}],\n"
-            
-            regex_str = s_data.get("invoice_regex", r"(\d{4,5}\s*-\s*\d{8})")
-            if "\\" in regex_str and '"' not in regex_str:
-                regex_formatted = f'r"{regex_str}"'
-            else:
-                regex_formatted = repr(regex_str)
-                
-            new_block += f"        \"invoice_regex\": {regex_formatted}\n"
-            new_block += "    },\n"
-        new_block += "}\n"
-        
-        updated_content = header + new_block
-        
-        with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
-            f.write(updated_content)
-            
-        msg = f"¡Éxito! config.py ha sido actualizado y enriquecido correctamente. {added_count} nuevos, {skipped_count} omitidos."
+        msg = f"¡Éxito! suppliers.json ha sido actualizado correctamente. {added_count} nuevos, {skipped_count} omitidos."
         print(msg)
         return {"success": True, "added": added_count, "skipped": skipped_count, "message": msg}
         
     except Exception as e:
-        msg = f"Error al escribir en config.py: {e}"
+        msg = f"Error al escribir en suppliers.json: {e}"
         print(msg)
         return {"success": False, "message": msg}
 

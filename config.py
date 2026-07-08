@@ -1,16 +1,40 @@
 import os
+import sys
 
 # Rutas Base (Relativas al proyecto para pruebas, pueden cambiarse a C:\...)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    # Si se ejecuta como .exe compilado por PyInstaller
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    # Si se ejecuta el script normal
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 INPUT_FOLDER = os.path.join(BASE_DIR, "Facturas_A_Procesar")
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "Facturas_Procesadas")
 UNRECOGNIZED_FOLDER = os.path.join(BASE_DIR, "Facturas_No_Reconocidas")
+CSV_ARCA_FOLDER = os.path.join(BASE_DIR, "CSV ARCA")
+
+# Asegurar que las carpetas existan (se crean automáticamente si no)
+os.makedirs(INPUT_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+os.makedirs(UNRECOGNIZED_FOLDER, exist_ok=True)
+os.makedirs(CSV_ARCA_FOLDER, exist_ok=True)
 
 # Extensiones a monitorear
 ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
 
+import json
+
+SUPPLIERS_FILE = os.path.join(BASE_DIR, "suppliers.json")
+
 # Diccionario de Proveedores y Expresiones Regulares
-# Cada proveedor tiene una lista de palabras clave para identificarlo en el texto,
-# y un patrón Regex para extraer el número de factura.
-# El formato de número indicado es: Punto de Venta - Número (ej. 0001-12345678)
-SUPPLIERS = {}
+if os.path.exists(SUPPLIERS_FILE):
+    try:
+        with open(SUPPLIERS_FILE, 'r', encoding='utf-8') as f:
+            SUPPLIERS = json.load(f)
+    except Exception as e:
+        print(f"Error cargando {SUPPLIERS_FILE}: {e}")
+        SUPPLIERS = {}
+else:
+    SUPPLIERS = {}
+
