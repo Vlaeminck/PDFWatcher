@@ -445,9 +445,11 @@ def process_invoice(file_path):
                     pass
                     
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
+            if ai_data.get('keywords_optimizadas'):
+                save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
             invoice_formatted = invoice_number.replace('-', ' - ')
             new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
-            move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+            move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
             return
             
         print("No se encontró texto (ni con OCR ni con IA). Moviendo a no reconocidas.", flush=True)
@@ -498,16 +500,18 @@ def process_invoice(file_path):
         if invoice_number:
             invoice_formatted = invoice_number.replace('-', ' - ')
             new_filename = f"{invoice_formatted}{ext}"
-            move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+            move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
         else:
             print("  [INFO] Falló extracción de número. Intentando rescate con IA...", flush=True)
             ai_data = extract_data_via_ai(file_path)
             if ai_data and ai_data.get('numero_factura'):
                 invoice_number = ai_data['numero_factura']
                 print(f"  [OK] Numero rescatado por IA: {invoice_number}", flush=True)
+                if ai_data.get('keywords_optimizadas'):
+                    save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
                 invoice_formatted = invoice_number.replace('-', ' - ')
                 new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
-                move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+                move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
             else:
                 new_filename = f"{supplier_found}-sin-numero{ext}"
                 regex_used = data.get("invoice_regex", "None")
@@ -531,9 +535,11 @@ def process_invoice(file_path):
                 except Exception:
                     pass
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
+            if ai_data.get('keywords_optimizadas'):
+                save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
             invoice_formatted = invoice_number.replace('-', ' - ')
             new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
-            move_to_processed(file_path, supplier_found, new_filename, invoice_date)
+            move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
         else:
             diagnosis = diagnose_error(text, file_path)
             log_error_to_file(file_path, "PROVEEDOR NO RECONOCIDO", diagnosis)
@@ -662,7 +668,7 @@ def generate_unique_filename(destination_dir, filename):
         counter += 1
     return new_filename
 
-def move_to_processed(file_path, supplier, new_filename, invoice_date=None):
+def move_to_processed(file_path, supplier, new_filename, invoice_date=None, invoice_formatted=None):
     if invoice_date is None:
         invoice_date = datetime.date.today()
     year = str(invoice_date.year)
@@ -671,14 +677,67 @@ def move_to_processed(file_path, supplier, new_filename, invoice_date=None):
     supplier_dir = os.path.join(OUTPUT_FOLDER, year, month_name, supplier)
     ensure_dir(supplier_dir)
 
+    if invoice_formatted:
+        for existing_file in os.listdir(supplier_dir):
+            if existing_file.startswith(invoice_formatted):
+                print(f"  [AVISO] Factura duplicada detectada: {invoice_formatted}. Se moverá a No Reconocidas.", flush=True)
+                log_error_to_file(file_path, "FACTURA DUPLICADA", f"La factura {invoice_formatted} ya fue procesada anteriormente para el proveedor '{supplier}'.")
+                move_to_unrecognized(file_path, f"DUPLICADA-{new_filename}")
+                return
+
     unique_filename = generate_unique_filename(supplier_dir, new_filename)
     dest_path = os.path.join(supplier_dir, unique_filename)
 
     try:
         shutil.move(file_path, dest_path)
         print(f"¡Éxito! Movido a: {dest_path}", flush=True)
+        log_scan_time(file_path, dest_path, supplier, new_filename)
     except Exception as e:
         print(f"Error moviendo archivo: {e}", flush=True)
+
+def log_scan_time(original_file_path, dest_path, supplier_name, new_filename):
+    try:
+        import os, datetime, re
+        file_name = os.path.basename(original_file_path)
+        
+        # Determinar origen y tiempo de inicio
+        origen = "Vigía (Detección en carpeta)"
+        match = re.search(r"Escáner_(\d{8}_\d{6})", file_name)
+        if match:
+            start_time = datetime.datetime.strptime(match.group(1), "%Y%m%d_%H%M%S")
+            origen = "Botón Escanear"
+        else:
+            try:
+                start_time = datetime.datetime.fromtimestamp(os.path.getctime(dest_path))
+            except Exception:
+                start_time = datetime.datetime.now()
+            
+        end_time = datetime.datetime.now()
+        duration = int((end_time - start_time).total_seconds())
+        if duration < 0:
+            duration = 0
+            
+        fecha = end_time.strftime("%d/%m/%Y")
+        hora = end_time.strftime("%H:%M:%S")
+        
+        used_ai = "(Rescatado IA)" in new_filename
+        ia_text = "USO DE IA" if used_ai else "SIN IA"
+        
+        log_line = f"Fecha: {fecha} | Hora: {hora} | Proveedor: {supplier_name} | Origen: {origen} | Tiempo de procesamiento: {duration} segundos ({ia_text})\n"
+        
+        from config import REGISTROS_FOLDER
+        if not os.path.exists(REGISTROS_FOLDER):
+            os.makedirs(REGISTROS_FOLDER)
+            
+        with open(os.path.join(REGISTROS_FOLDER, "tiempos_escaneo.txt"), "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception as e:
+        # Emergency log to root dir so we can see what failed
+        try:
+            with open("DEBUG_LOG_CRASH.txt", "a") as f:
+                f.write(f"Error in log_scan_time: {e}\n")
+        except:
+            pass
 
 def move_to_unrecognized(file_path, new_filename):
     ensure_dir(UNRECOGNIZED_FOLDER)
@@ -688,6 +747,12 @@ def move_to_unrecognized(file_path, new_filename):
     try:
         shutil.move(file_path, dest_path)
         print(f"No reconocido. Movido a: {dest_path}", flush=True)
+        # Determinar un nombre de proveedor para el log basado en el prefijo
+        proveedor_log = "Error / No Reconocido"
+        if new_filename.startswith("DUPLICADA-"):
+            proveedor_log = "Duplicada"
+            
+        log_scan_time(file_path, dest_path, proveedor_log, new_filename)
     except Exception as e:
         print(f"Error moviendo archivo: {e}", flush=True)
 
@@ -741,7 +806,7 @@ def extract_data_via_ai(file_path):
         {
             "cuit": "el CUIT del emisor (11 digitos sin guiones)",
             "nombre_emisor": "el nombre o razón social del emisor",
-            "numero_factura": "el número completo de la factura con formato XXXX-XXXXXXXX",
+            "numero_factura": "el número COMPLETO de la factura, incluyendo SIEMPRE el Punto de Venta (4 o 5 dígitos) y el Número de Comprobante (8 dígitos), unidos por un guion. Ejemplo: 00002-00001536",
             "fecha_emision": "la fecha de emisión en formato YYYY-MM-DD",
             "keywords_optimizadas": ["palabra1", "palabra2"]
         }
@@ -757,9 +822,6 @@ def extract_data_via_ai(file_path):
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
         
-        if data and data.get('nombre_emisor') and data.get('keywords_optimizadas'):
-            save_ai_supplier(data['nombre_emisor'], data.get('cuit'), data['keywords_optimizadas'])
-            
         return data
             
     except Exception as e:
@@ -803,14 +865,23 @@ def save_ai_supplier(nombre, cuit, keywords):
                 "keywords": final_keywords,
                 "invoice_regex": r"(\d{4,5}\s*-\s*\d{8})"
             }
-            with open(suppliers_file, 'w', encoding='utf-8') as f:
-                json.dump(suppliers, f, indent=4, ensure_ascii=False)
-            print(f"  [IA] Proveedor '{nombre}' guardado en suppliers.json con keywords optimizadas para futuros escaneos.", flush=True)
+            action_msg = "guardado"
+        else:
+            existing_kws = suppliers[nombre].get("keywords", [])
+            for k in final_keywords:
+                if k not in existing_kws:
+                    existing_kws.append(k)
+            suppliers[nombre]["keywords"] = existing_kws
+            action_msg = "actualizado"
             
-            from config import SUPPLIERS
-            SUPPLIERS[nombre] = suppliers[nombre]
-            
-            global _CUIT_INDEX
-            _CUIT_INDEX = build_cuit_to_supplier_map()
+        with open(suppliers_file, 'w', encoding='utf-8') as f:
+            json.dump(suppliers, f, indent=4, ensure_ascii=False)
+        print(f"  [IA] Proveedor '{nombre}' {action_msg} en suppliers.json con keywords optimizadas para futuros escaneos.", flush=True)
+        
+        from config import SUPPLIERS
+        SUPPLIERS[nombre] = suppliers[nombre]
+        
+        global _CUIT_INDEX
+        _CUIT_INDEX = build_cuit_to_supplier_map()
     except Exception as e:
         print(f"Error guardando proveedor de IA: {e}", flush=True)

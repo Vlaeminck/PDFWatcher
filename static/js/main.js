@@ -63,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusText = document.getElementById('watcher-status-text');
     const statusBadge = document.getElementById('watcher-status-badge');
 
+    let prevUnrecognizedCount = null;
+
     async function fetchStatus() {
         try {
             const res = await fetch('/api/status');
@@ -73,6 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('stat-pending').textContent = data.stats.pending;
             document.getElementById('stat-processed').textContent = data.stats.processed;
             document.getElementById('stat-unrecognized').textContent = data.stats.unrecognized;
+            
+            if (prevUnrecognizedCount !== null && data.stats.unrecognized > prevUnrecognizedCount) {
+                showToast("¡Atención! Una factura no reconocida requiere revisión.", "warning");
+            }
+            prevUnrecognizedCount = data.stats.unrecognized;
         } catch (error) {
             console.error("Error fetching status:", error);
         }
@@ -345,11 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         fileDiv.addEventListener('click', () => openModal(inv));
                         supplierContent.appendChild(fileDiv);
                     });
-                    monthContent.appendChild(buildFolder(supplier, supplierContent, hasSearch));
+                    monthContent.appendChild(buildFolder(supplier, supplierContent, true));
                 });
-                yearContent.appendChild(buildFolder(month, monthContent, hasSearch));
+                yearContent.appendChild(buildFolder(month, monthContent, true));
             });
-            rootDiv.appendChild(buildFolder(year, yearContent, hasSearch || Object.keys(tree).length === 1)); // auto open year if only 1
+            rootDiv.appendChild(buildFolder(year, yearContent, true));
         });
 
         processedTreeContainer.appendChild(rootDiv);

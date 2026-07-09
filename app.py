@@ -10,6 +10,14 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = config.CSV_ARCA_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max
 
+@app.after_request
+def add_header(response):
+    if request.path.startswith('/api/'):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '-1'
+    return response
+
 def count_files(directory):
     if not os.path.exists(directory):
         return 0
@@ -61,8 +69,10 @@ def processed_invoices():
     if os.path.exists(config.OUTPUT_FOLDER):
         for root, dirs, files in os.walk(config.OUTPUT_FOLDER):
             for file in files:
+                if file == '.gitkeep':
+                    continue
                 rel_path = os.path.relpath(os.path.join(root, file), config.OUTPUT_FOLDER)
-                parts = rel_path.split(os.sep)
+                parts = rel_path.replace('\\', '/').split('/')
                 if len(parts) >= 4:
                     year, month, supplier = parts[0], parts[1], parts[2]
                     filename = parts[-1]

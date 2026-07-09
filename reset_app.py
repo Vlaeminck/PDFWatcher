@@ -50,26 +50,36 @@ clean_folder("Facturas_A_Procesar")
 clean_folder("Facturas_Procesadas")
 clean_folder("Facturas_No_Reconocidas")
 clean_folder("CSV ARCA")
+clean_folder("registros")
 
-# 2. Resetear config.py
-print("\nReseteando diccionario de proveedores en config.py...")
+# 2. Eliminar suppliers.json
+print("\nEliminando base de datos de proveedores (suppliers.json)...")
+suppliers_path = os.path.join(base_dir, "suppliers.json")
+if os.path.exists(suppliers_path):
+    try:
+        os.remove(suppliers_path)
+        print("[OK] suppliers.json eliminado exitosamente.")
+    except Exception as e:
+        print(f"[!] Error eliminando suppliers.json: {e}")
+else:
+    print("[-] suppliers.json no existe, no hay nada que borrar.")
+
+# 3. Resetear API Key en config.py
+print("\nReseteando API Key en config.py...")
 config_path = os.path.join(base_dir, "config.py")
-try:
-    with open(config_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Buscar dónde empieza SUPPLIERS
-    match = re.search(r'^SUPPLIERS\s*=\s*\{', content, re.MULTILINE)
-    if match:
-        top_part = content[:match.start()]
-        new_content = top_part + "SUPPLIERS = {}\n"
+if os.path.exists(config_path):
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Buscar la linea AI_API_KEY = "..." o '...' y reemplazarla
+        new_content = re.sub(r'AI_API_KEY\s*=\s*[\'"].*?[\'"]', 'AI_API_KEY = "TU_API_KEY_AQUI"', content)
+        
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(new_content)
-        print("[OK] config.py reseteado correctamente (SUPPLIERS = {}).")
-    else:
-        print("[!] No se encontro la declaracion 'SUPPLIERS =' en config.py")
-except Exception as e:
-    print(f"[!] Error reseteando config.py: {e}")
+        print("[OK] API Key borrada exitosamente de config.py.")
+    except Exception as e:
+        print(f"[!] Error reseteando config.py: {e}")
 
 print("\n" + "="*50)
 print("  ¡APLICACION COMPLETAMENTE LIMPIA!")
