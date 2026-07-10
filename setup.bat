@@ -1,23 +1,27 @@
 @echo off
+setlocal enabledelayedexpansion
 echo ===================================================
 echo PDFWatcher - Instalar Dependencias
 echo ===================================================
 echo.
 
-:: Verificar si Python esta instalado
-python --version >nul 2>&1
+:: Verificar si Python esta instalado correctamente (evitando el alias de la Microsoft Store)
+echo [0/4] Verificando instalacion de Python...
+python -c "import sys; print(sys.version)" >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ADVERTENCIA] Python no esta instalado o no esta en el PATH del sistema.
+    echo [ADVERTENCIA] Python no esta instalado, no esta en el PATH o se abrio la Microsoft Store.
     echo Intentando instalar Python mediante winget...
     winget --version >nul 2>&1
-    if %errorlevel% neq 0 (
-        echo [ERROR] No se encontro winget. Por favor, instale Python (3.8 o superior) manualmente desde python.org.
+    if !errorlevel! neq 0 (
+        echo [ERROR] No se encontro winget. Por favor, instale Python 3.8 o superior manualmente desde python.org.
+        echo Asegurese de marcar la opcion "Add Python to PATH" durante la instalacion.
         pause
         exit /b 1
     )
-    winget install --id Python.Python.3.11 -e --accept-package-agreements --accept-source-agreements --silent
-    if %errorlevel% neq 0 (
-        echo [ERROR] Hubo un error al instalar Python con winget. Instale manualmente.
+    echo Instalando Python 3.11 y agregandolo al PATH...
+    winget install --id Python.Python.3.11 -e --accept-package-agreements --accept-source-agreements --silent --override "PrependPath=1 Include_test=0"
+    if !errorlevel! neq 0 (
+        echo [ERROR] Hubo un error al instalar Python con winget. Instale manualmente desde python.org.
         pause
         exit /b 1
     )
@@ -31,11 +35,11 @@ if %errorlevel% neq 0 (
     exit /b 0
 )
 
-echo [1/4] Actualizando pip...
+echo [1/4] Python detectado. Actualizando pip...
 python -m pip install --upgrade pip
 
 echo [2/4] Instalando dependencias de Python desde requirements.txt...
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo.
     echo [ERROR] Hubo un error al instalar las dependencias de Python.
