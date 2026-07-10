@@ -119,13 +119,14 @@ def extract_cuits_from_text(text):
 
 def load_arca_csvs():
     """
-    Lee todos los archivos CSV en la carpeta CSV ARCA y construye un índice por CAE.
+    Lee todos los archivos CSV en la carpeta CSV ARCA y construye un índice por CAE y por CUIT.
     """
     cae_index = {}
+    arca_cuit_index = {}
     base_dir = os.path.dirname(os.path.abspath(__file__))
     csv_folder = os.path.join(base_dir, "CSV ARCA")
     if not os.path.exists(csv_folder):
-        return cae_index
+        return cae_index, arca_cuit_index
 
     import csv
     import io
@@ -192,10 +193,12 @@ def load_arca_csvs():
                         "total": total,
                         "date": date_val
                     }
+                if cuit and name:
+                    arca_cuit_index[cuit] = name
         except Exception as e:
             print(f"Error procesando CSV {os.path.basename(file_path)}: {e}", flush=True)
 
-    return cae_index
+    return cae_index, arca_cuit_index
 
 def normalize_string(s):
     """Normaliza un texto para comparaciones de keywords robustas."""
@@ -283,7 +286,7 @@ def build_cuit_to_supplier_map():
 
 # Índices globales construidos una sola vez
 _CUIT_INDEX = build_cuit_to_supplier_map()
-_CAE_INDEX = load_arca_csvs()
+_CAE_INDEX, _ARCA_CUIT_INDEX = load_arca_csvs()
 
 def find_supplier(text):
     """
@@ -351,7 +354,10 @@ def parse_valid_date(day_str, month_str, year_str):
             year += 2000
             
         if 2000 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
-            return datetime.date(year, month, day)
+            parsed_date = datetime.date(year, month, day)
+            if parsed_date > datetime.date.today():
+                return None
+            return parsed_date
     except Exception:
         pass
     return None
@@ -434,13 +440,17 @@ def process_invoice(file_path):
             cuit_cleaned = re.sub(r'\D', '', str(ai_data.get('cuit', '')))
             supplier_found = _CUIT_INDEX.get(cuit_cleaned)
             if not supplier_found:
-                supplier_found = ai_data.get('nombre_emisor', 'Proveedor Rescatado')
+                supplier_found = _ARCA_CUIT_INDEX.get(cuit_cleaned)
+            if not supplier_found:
+                supplier_found = ai_data.get('nombre_emisor', 'Proveedor Rescatado').replace('/', '-')
             
             invoice_number = ai_data.get('numero_factura')
             invoice_date = None
             if ai_data.get('fecha_emision'):
                 try:
-                    invoice_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
+                    parsed_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
+                    if parsed_date <= datetime.date.today():
+                        invoice_date = parsed_date
                 except Exception:
                     pass
                     
@@ -485,8 +495,10 @@ def process_invoice(file_path):
         invoice_date = None
         if match_method == "CAE" and csv_info and csv_info.get("date"):
             try:
-                invoice_date = datetime.datetime.strptime(csv_info["date"], "%Y-%m-%d").date()
-                print(f"  [OK] Fecha obtenida de ARCA CSV: {invoice_date}", flush=True)
+                parsed_date = datetime.datetime.strptime(csv_info["date"], "%Y-%m-%d").date()
+                if parsed_date <= datetime.date.today():
+                    invoice_date = parsed_date
+                    print(f"  [OK] Fecha obtenida de ARCA CSV: {invoice_date}", flush=True)
             except Exception:
                 pass
         
@@ -525,13 +537,17 @@ def process_invoice(file_path):
             cuit_cleaned = re.sub(r'\D', '', str(ai_data['cuit']))
             supplier_found = _CUIT_INDEX.get(cuit_cleaned)
             if not supplier_found:
+                supplier_found = _ARCA_CUIT_INDEX.get(cuit_cleaned)
+            if not supplier_found:
                 supplier_found = ai_data.get('nombre_emisor', 'Proveedor Rescatado').replace('/', '-')
                 
             invoice_number = ai_data['numero_factura']
             invoice_date = None
             if ai_data.get('fecha_emision'):
                 try:
-                    invoice_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
+                    parsed_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
+                    if parsed_date <= datetime.date.today():
+                        invoice_date = parsed_date
                 except Exception:
                     pass
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
@@ -801,7 +817,7 @@ def extract_data_via_ai(file_path):
             return None
             
         prompt = """
-        Eres un asistente experto en analizar facturas de Argentina.
+        Eres un asistente experto en analizar facturas de Argentina. La fecha actual es """ + datetime.date.today().strftime('%Y-%m-%d') + """.
         Extrae la siguiente información de la imagen y devuelve ÚNICAMENTE un objeto JSON válido con este formato exacto:
         {
             "cuit": "el CUIT del emisor (11 digitos sin guiones)",
@@ -811,6 +827,7 @@ def extract_data_via_ai(file_path):
             "keywords_optimizadas": ["palabra1", "palabra2"]
         }
         Si no encuentras alguno de los datos, coloca null en su valor sin comillas.
+        Para la fecha de emisión: ten en cuenta que NUNCA puede ser mayor a la fecha actual. Si ves una fecha futura, asume un error de escaneo y usa la lógica para corregirlo (ej. si el OCR leyó un 8 en lugar de un 6), o simplemente extrae null.
         Para keywords_optimizadas, extrae 1 o 2 palabras clave únicas y características del emisor (ej. nombre comercial corto) que sirvan para identificar a este proveedor en el futuro. Evita palabras genéricas como "factura" o "SA".
         NO devuelvas explicaciones, marcadores markdown (```json) ni texto adicional, SOLAMENTE el diccionario JSON en texto plano.
         """
