@@ -26,11 +26,12 @@ git stash push -m "Respaldo automatico antes de actualizar" >nul 2>&1
 
 REM Descargar y aplicar los cambios oficiales
 git pull origin main
+set PULL_ERROR=%ERRORLEVEL%
 
 REM Restaurar los cambios locales guardados (si habia alguno)
 git stash pop >nul 2>&1
 
-if %ERRORLEVEL% NEQ 0 (
+if %PULL_ERROR% NEQ 0 (
     echo.
     echo ========================================================
     echo ERROR: Hubo un problema al aplicar las actualizaciones.
