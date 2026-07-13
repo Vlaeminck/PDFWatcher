@@ -18,4 +18,6 @@ Facturas_Procesadas/*
 !Facturas_Procesadas/.gitkeep
 CSV ARCA/*
 !CSV ARCA/.gitkeep
+registros/*
+!registros/.gitkeep
 dist/
