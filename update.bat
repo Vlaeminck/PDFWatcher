@@ -21,14 +21,20 @@ echo Aplicando actualizaciones...
 echo ========================================================
 echo.
 
-REM Descargar y aplicar los cambios
+REM Guardar temporalmente los cambios locales (como nuevos proveedores en config.py)
+git stash push -m "Respaldo automatico antes de actualizar" >nul 2>&1
+
+REM Descargar y aplicar los cambios oficiales
 git pull origin main
+
+REM Restaurar los cambios locales guardados (si habia alguno)
+git stash pop >nul 2>&1
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo ========================================================
-    echo ERROR: Hubo un problema al actualizar. 
-    echo Es posible que tengas cambios locales en archivos de codigo que entran en conflicto.
+    echo ERROR: Hubo un problema al aplicar las actualizaciones.
+    echo Es posible que tengas cambios locales en el codigo que entran en conflicto.
     echo Tus facturas y registros NO han sido afectados.
     echo ========================================================
 ) else (
