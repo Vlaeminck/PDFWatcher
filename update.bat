@@ -1,18 +1,17 @@
 @echo off
-chcp 65001 > nul
 echo ========================================================
 echo Buscando actualizaciones de PDFWatcher en el servidor...
 echo ========================================================
 echo.
 
-:: Asegurar que el repositorio remoto está configurado
+REM Asegurar que el repositorio remoto esta configurado
 git remote add origin https://github.com/Vlaeminck/PDFWatcher.git 2>nul
 git remote set-url origin https://github.com/Vlaeminck/PDFWatcher.git 2>nul
 
-:: Obtener información de los últimos cambios sin aplicarlos
+REM Obtener informacion de los ultimos cambios sin aplicarlos
 git fetch origin main
 
-:: Mostrar qué archivos han sido modificados
+REM Mostrar que archivos han sido modificados
 echo Los siguientes archivos han sido modificados o agregados en el repositorio y seran actualizados:
 git diff --name-status HEAD origin/main
 echo.
@@ -22,7 +21,7 @@ echo Aplicando actualizaciones...
 echo ========================================================
 echo.
 
-:: Descargar y aplicar los cambios
+REM Descargar y aplicar los cambios
 git pull origin main
 
 if %ERRORLEVEL% NEQ 0 (
@@ -35,11 +34,11 @@ if %ERRORLEVEL% NEQ 0 (
 ) else (
     echo.
     echo ========================================================
-    echo ¡Actualizacion completada con exito!
+    echo Actualizacion completada con exito!
     echo.
-    echo Tus carpetas de datos (Facturas_A_Procesar, 
+    echo Tus carpetas de datos: Facturas_A_Procesar, 
     echo Facturas_Procesadas, Facturas_No_Reconocidas, 
-    echo registros, y CSV ARCA) NO se han visto afectadas,
+    echo registros y CSV ARCA NO se han visto afectadas,
     echo tu informacion sigue intacta.
     echo ========================================================
 )
