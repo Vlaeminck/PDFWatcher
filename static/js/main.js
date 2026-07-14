@@ -578,4 +578,116 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchProgress();
         }
     }, 2000);
+
+    // --- Doctor Tab Logic ---
+    const btnDoctorScan = document.getElementById('btn-doctor-scan');
+    const btnDoctorFix = document.getElementById('btn-doctor-fix');
+    const doctorResultsContainer = document.getElementById('doctor-results-container');
+    const doctorResultsList = document.getElementById('doctor-results-list');
+    const doctorCount = document.getElementById('doctor-count');
+    
+    let currentAnomalies = [];
+
+    if (btnDoctorScan) {
+        btnDoctorScan.addEventListener('click', async () => {
+            const originalHTML = btnDoctorScan.innerHTML;
+            btnDoctorScan.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Escaneando...';
+            btnDoctorScan.disabled = true;
+            btnDoctorFix.disabled = true;
+            
+            try {
+                const res = await fetch('/api/doctor/scan');
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentAnomalies = data.anomalies;
+                    renderDoctorResults(currentAnomalies);
+                } else {
+                    showToast("Error al escanear: " + data.message, "error");
+                }
+            } catch (error) {
+                showToast("Error de conexión con el Doctor", "error");
+            } finally {
+                btnDoctorScan.innerHTML = originalHTML;
+                btnDoctorScan.disabled = false;
+            }
+        });
+    }
+
+    if (btnDoctorFix) {
+        btnDoctorFix.addEventListener('click', async () => {
+            if (currentAnomalies.length === 0) return;
+            
+            const originalHTML = btnDoctorFix.innerHTML;
+            btnDoctorFix.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Curando...';
+            btnDoctorFix.disabled = true;
+            btnDoctorScan.disabled = true;
+            
+            try {
+                const res = await fetch('/api/doctor/fix', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast(`Se aplicaron ${data.fixes} curas automáticas.`, "success");
+                    if (data.errors.length > 0) {
+                        showToast(`Hubo ${data.errors.length} errores al curar. Revisa la consola.`, "warning");
+                        console.error("Errores del doctor:", data.errors);
+                    }
+                    // Rescan
+                    btnDoctorScan.click();
+                } else {
+                    showToast("Error al aplicar curas: " + data.message, "error");
+                }
+            } catch (error) {
+                showToast("Error de red al aplicar curas", "error");
+            } finally {
+                btnDoctorFix.innerHTML = originalHTML;
+                btnDoctorScan.disabled = false;
+            }
+        });
+    }
+
+    function renderDoctorResults(anomalies) {
+        doctorResultsContainer.style.display = 'block';
+        doctorResultsList.innerHTML = '';
+        doctorCount.textContent = `${anomalies.length} anomalías`;
+        
+        if (anomalies.length === 0) {
+            doctorCount.className = "badge status-active";
+            doctorResultsList.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--success);"><i class="fa-solid fa-check-circle" style="font-size: 2rem; margin-bottom: 0.5rem;"></i><br>¡Todo está perfecto! No se encontraron anomalías.</div>';
+            btnDoctorFix.disabled = true;
+            return;
+        }
+        
+        doctorCount.className = "badge status-inactive";
+        btnDoctorFix.disabled = false;
+        
+        anomalies.forEach(anom => {
+            const div = document.createElement('div');
+            
+            let color = "var(--text)";
+            let icon = "fa-triangle-exclamation";
+            
+            if (anom.severity === 'high') { color = "var(--danger)"; icon = "fa-circle-xmark"; }
+            else if (anom.severity === 'medium') { color = "var(--warning)"; }
+            else if (anom.severity === 'low') { color = "var(--text-secondary)"; icon = "fa-info-circle"; }
+            
+            div.style.padding = "1rem";
+            div.style.border = "1px solid rgba(255,255,255,0.1)";
+            div.style.borderRadius = "0.5rem";
+            div.style.background = "rgba(0,0,0,0.2)";
+            
+            div.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <i class="fa-solid ${icon}" style="color: ${color}; margin-top: 0.2rem;"></i>
+                    <div>
+                        <strong style="color: ${color}; text-transform: uppercase; font-size: 0.8rem;">${anom.type.replace(/_/g, ' ')}</strong>
+                        <p style="margin: 0.2rem 0; font-size: 0.95rem;">${anom.message}</p>
+                        <small style="color: var(--text-secondary); word-break: break-all;"><code>${anom.path}</code></small>
+                    </div>
+                </div>
+            `;
+            doctorResultsList.appendChild(div);
+        });
+    }
 });

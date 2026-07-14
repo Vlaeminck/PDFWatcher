@@ -7,6 +7,7 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 from watcher import watcher_manager
 from update_suppliers import update_config_suppliers
+import doctor
 import config
 
 if getattr(sys, 'frozen', False):
@@ -192,10 +193,23 @@ def save_api_key():
         return jsonify({"success": False, "message": "La API Key no puede estar vacía"}), 400
         
     try:
+        # Save to api_key.txt for compiled environments
         api_key_path = os.path.join(config.BASE_DIR, 'api_key.txt')
         with open(api_key_path, 'w', encoding='utf-8') as f:
             f.write(api_key)
             
+        # Update config.py physically for developer visibility
+        config_py_path = os.path.join(config.BASE_DIR, 'config.py')
+        if os.path.exists(config_py_path):
+            import re
+            with open(config_py_path, 'r', encoding='utf-8') as f:
+                config_content = f.read()
+                
+            new_content = re.sub(r'AI_API_KEY\s*=\s*".*?"', f'AI_API_KEY = "{api_key}"', config_content)
+            
+            with open(config_py_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+                
         config.AI_API_KEY = api_key
         return jsonify({"success": True, "message": "API Key guardada correctamente"})
     except Exception as e:
@@ -207,6 +221,22 @@ def get_api_key():
     if key == "TU_API_KEY_AQUI":
         key = ""
     return jsonify({"api_key": key})
+
+@app.route('/api/doctor/scan', methods=['GET'])
+def doctor_scan():
+    try:
+        anomalies = doctor.scan_database()
+        return jsonify({"success": True, "anomalies": anomalies})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/doctor/fix', methods=['POST'])
+def doctor_fix():
+    try:
+        result = doctor.fix_database()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 import threading
 

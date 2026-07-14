@@ -824,11 +824,11 @@ def extract_data_via_ai(file_path):
             "nombre_emisor": "el nombre o razón social del emisor",
             "numero_factura": "el número COMPLETO de la factura, incluyendo SIEMPRE el Punto de Venta (4 o 5 dígitos) y el Número de Comprobante (8 dígitos), unidos por un guion. Ejemplo: 00002-00001536",
             "fecha_emision": "la fecha de emisión en formato YYYY-MM-DD",
-            "keywords_optimizadas": ["palabra1", "palabra2"]
+            "keywords_optimizadas": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5"]
         }
         Si no encuentras alguno de los datos, coloca null en su valor sin comillas.
         Para la fecha de emisión: ten en cuenta que NUNCA puede ser mayor a la fecha actual. Si ves una fecha futura, asume un error de escaneo y usa la lógica para corregirlo (ej. si el OCR leyó un 8 en lugar de un 6), o simplemente extrae null.
-        Para keywords_optimizadas, extrae 1 o 2 palabras clave únicas y características del emisor (ej. nombre comercial corto) que sirvan para identificar a este proveedor en el futuro. Evita palabras genéricas como "factura" o "SA".
+        Para keywords_optimizadas, extrae ENTRE 3 y 6 PALABRAS CLAVE que sean ÚNICAS y EXCLUSIVAS de este proveedor. Incluye nombres comerciales, siglas, partes del logotipo legibles, direcciones web, o números de fantasía que sirvan como "huella digital" textual para que un sistema OCR bruto lo reconozca a futuro. Evita palabras comunes ("factura", "SA", "SRL", "CUIT", "fecha", "total", "IVA").
         NO devuelvas explicaciones, marcadores markdown (```json) ni texto adicional, SOLAMENTE el diccionario JSON en texto plano.
         """
         contents.append(prompt)
