@@ -83,20 +83,7 @@
                     </div>
                 </div>
                 
-                <!-- New Card for Drag & Drop Invoice -->
-                <div class="glass-card" style="margin-bottom: 2rem;">
-                    <h2 style="margin-bottom: 1rem;"><i class="fa-solid fa-file-invoice" style="margin-right: 10px; color: var(--accent-primary);"></i> Cargar Factura Manualmente</h2>
-                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Arrastra aquí una factura (PDF o Imagen) para procesarla inmediatamente en la base de datos.</p>
-                    
-                    <div id="invoice-drop-zone" class="drop-zone" style="min-height: 150px; padding: 2rem; border-color: var(--accent-primary);">
-                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--accent-primary); margin-bottom: 1rem;"></i>
-                        <h3>Arrastra y suelta tu Factura aquí</h3>
-                        <p>o</p>
-                        <label for="invoice-file-upload" class="btn btn-outline" style="margin-top: 0.5rem; display: inline-block; cursor: pointer;">Seleccionar archivo</label>
-                        <input type="file" id="invoice-file-upload" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" style="display: none;" multiple>
-                        <p class="file-hint" style="margin-top: 1rem;">Formatos soportados: PDF, PNG, JPG, TIFF, BMP</p>
-                    </div>
-                </div>
+
 
                 <!-- Progress Bar (Hidden by default) -->
                 <div id="progress-container" class="glass-card" style="display: none; margin-bottom: 2rem;">
@@ -151,6 +138,21 @@
                         <div class="stat-details">
                             <h3>No Reconocidas</h3>
                             <p class="stat-number" id="stat-unrecognized">0</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Subtle Invoice Upload -->
+                <div class="glass-card" style="margin-top: 2rem; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 2rem;">
+                        <div style="flex: 1;">
+                            <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem;"><i class="fa-solid fa-file-invoice" style="margin-right: 8px; color: var(--text-secondary);"></i> Carga Rápida Manual</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">Arrastra tu factura (PDF o Imagen) al área gris o haz clic para seleccionarla.</p>
+                        </div>
+                        <div id="invoice-drop-zone" class="drop-zone" style="flex: 1; min-height: unset; padding: 1rem; margin: 0; border: 2px dashed rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease;">
+                            <i class="fa-solid fa-cloud-arrow-up" style="color: var(--text-secondary); font-size: 1.2rem;"></i>
+                            <label for="invoice-file-upload" style="cursor: pointer; color: var(--text-primary); font-weight: 500; margin: 0; width: 100%; text-align: center;">Soltar archivo aquí o Explorar</label>
+                            <input type="file" id="invoice-file-upload" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" style="display: none;" multiple>
                         </div>
                     </div>
                 </div>
