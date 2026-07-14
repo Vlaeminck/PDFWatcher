@@ -1,103 +1,82 @@
 # PDFWatcher - Vigía y Organizador Inteligente de Facturas
 
-Este proyecto es una herramienta automatizada para Windows que monitorea de forma continua una carpeta de entrada (`Facturas_A_Procesar`), extrae la información relevante de facturas en formato PDF o imágenes (PNG, JPG, etc.), y las organiza automáticamente en carpetas jerárquicas estructuradas por **Año**, **Mes de emisión** y **Nombre de Proveedor**.
+Este proyecto es una herramienta automatizada para Windows que extrae la información relevante de facturas en formato PDF o imágenes (PNG, JPG, etc.), y las organiza automáticamente en carpetas jerárquicas estructuradas por **Año**, **Mes de emisión** y **Nombre de Proveedor**.
 
 ---
 
 ## 🚀 Características Principales
 
-* **Monitoreo en Tiempo Real:** Utiliza la librería `watchdog` para vigilar de forma reactiva y en tiempo real cualquier adición o cambio en la carpeta de entrada.
-* **Organización por Fecha Real de Factura:** Extrae y utiliza la fecha de emisión contenida en el comprobante (ya sea mediante cruce con ARCA CSV o vía regex del texto) para organizar los archivos en el directorio del mes correcto (ej. `/Facturas_Procesadas/2026/Junio/`), previniendo que facturas de meses previos se guarden en el mes de ejecución actual.
-* **Motor de Matching Multitier:**
-  1. **Tier 1 (CAE):** Detecta códigos de autorización de 14 dígitos (CAE) y los busca en los CSV oficiales de ARCA (ex-AFIP) para reconstruir con precisión los datos de la factura.
-  2. **Tier 2 (CUIT como Alias/ID):** Identifica al emisor de manera inequívoca extrayendo su CUIT de 11 dígitos de la factura y cruzándolo con los registros de ARCA CSV. Esto permite clasificar correctamente al proveedor aunque el OCR no lea su nombre comercial debido a logotipos o fuentes complejas.
-  3. **Tier 3 (Keywords Inteligentes):** Busca coincidencias textuales en el documento priorizando la palabra clave más larga registrada.
-* **Log de Errores con Diagnóstico Inteligente:** Si un comprobante no puede ser procesado, se mueve a `Facturas_No_Reconocidas` y se registra un análisis detallado en `errores_procesamiento.txt` con la causa exacta (sin texto legible, proveedor no registrado, CUIT ausente en ARCA o falla en la expresión regular del número de factura) y la solución recomendada.
-* **Soporte OCR Integrado:** Aplica OCR con **Tesseract** de manera transparente si el archivo es una imagen o un PDF sin capa de texto.
-* **Sincronización Automática de Proveedores:** Permite actualizar de forma automática la base de datos de proveedores (`config.py`) a partir de archivos CSV oficiales de ARCA colocados en `CSV ARCA` mediante la ejecución de `update_suppliers.py`.
-* **Interfaz Web (Dashboard):** Una interfaz gráfica atractiva y moderna (`app.py`) para gestionar los procesos, iniciar el vigía e inspeccionar proveedores en tiempo real.
-* **Rescate Asistido por IA (Gemini):** Cuando las expresiones regulares u OCR tradicional fallan, interviene un agente inteligente con Google Gemini Flash Lite para intentar extraer proveedor, fecha y número de comprobante visualmente.
-* **Escaneo Automatizado y Silencioso:** Integración con NAPS2 que permite iniciar escaneos directamente desde la interfaz web. El escaneo ocurre de fondo (headless) sin robar el control del mouse y deposita los PDFs directamente para su procesamiento.
+* **Interfaz Gráfica Moderna (Dashboard Web):** Una interfaz de usuario atractiva que te permite monitorear estadísticas en tiempo real, visualizar facturas procesadas, y administrar proveedores directamente desde el navegador.
+* **Organización Inteligente por Fecha:** Extrae la fecha de emisión contenida en el comprobante (mediante texto, OCR o IA) para organizar los archivos en el directorio del mes correcto (`/Facturas_Procesadas/YYYY/Mes/Proveedor/`).
+* **Soporte para CSV y ZIP de ARCA:** Actualiza tu base de datos de proveedores automáticamente subiendo tu reporte de "Mis Comprobantes Recibidos" (en CSV o directamente el ZIP de ARCA) desde la pestaña de carga de la aplicación.
+* **Motor de Matching Multinivel:** 
+  1. **Tier 1 (CAE):** Cruza el CAE extraído con los datos de ARCA.
+  2. **Tier 2 (CUIT):** Identifica al emisor de manera inequívoca usando su CUIT.
+  3. **Tier 3 (Keywords):** Busca coincidencias textuales inteligentes de la Razón Social.
+* **Rescate Asistido por IA (Gemini Flash Lite):** Cuando el OCR tradicional falla o la factura es muy borrosa, interviene un agente inteligente de Google Gemini para extraer proveedor, fecha y número. Se puede configurar fácilmente desde la pestaña **"Ajustes"** de la app.
+* **Carga Rápida Manual:** Arrastra y suelta tus PDF o imágenes directamente en el panel general para procesarlos en el acto.
+* **Soporte de Escáner Integrado (NAPS2):** Inicia escaneos silenciosos directamente desde la aplicación web. El documento pasará de papel a tu base de datos en un solo clic.
+* **Tutorial Interactivo:** Un asistente paso a paso integrado para guiar a los nuevos usuarios.
+* **Versión Ejecutable (.exe):** Incluye un script `build.bat` que empaqueta todo el programa en un solo archivo ejecutable para Windows, sin depender de la consola.
 
 ---
 
-## 📋 Requisitos del Sistema y Dependencias
+## 📋 Requisitos del Sistema (Dependencias Externas)
 
-### 1. Motor de OCR: Tesseract (Requerido para imágenes/PDFs escaneados)
-Este proyecto requiere instalar el software Tesseract en Windows:
+Aunque compiles el programa como `.exe`, el sistema operativo necesita de estos dos programas externos gratuitos para funcionar al 100%:
+
+### 1. Tesseract OCR (Requerido para imágenes/PDFs escaneados)
 * Descargue el instalador desde [UB-Mannheim Tesseract Wiki](https://github.com/UB-Mannheim/tesseract/wiki).
-* Se espera la instalación por defecto en:
-  `C:\Program Files\Tesseract-OCR\tesseract.exe`
-  *(De instalarlo en otra ruta, modifique la variable `TESSERACT_PATH` al inicio de `processor.py`)*.
+* Se instala por defecto en: `C:\Program Files\Tesseract-OCR\tesseract.exe`
 
 ### 2. NAPS2 (Requerido para el botón Escáner Automático)
-Se utiliza para realizar los escaneos silenciosos desde la aplicación web sin interrumpir tu flujo de trabajo.
-* Se espera la instalación por defecto en: `C:\Program Files\NAPS2\NAPS2.Console.exe`
-* Puede descargarlo desde: [naps2.com](https://www.naps2.com/).
-* **IMPORTANTE:** Una vez instalado, abre NAPS2 manualmente por primera vez y haz clic en **"Perfiles" -> "Nuevo"** para configurar y guardar tu escáner. Sin un perfil creado, el escaneo desde la web fallará.
+* Descargue desde [naps2.com](https://www.naps2.com/).
+* Se instala por defecto en: `C:\Program Files\NAPS2\NAPS2.Console.exe`
+* **IMPORTANTE:** Tras instalarlo, abre NAPS2 y ve a **"Perfiles" -> "Nuevo"** para configurar tu escáner físico. Si no hay perfil, el botón de escaneo en la web fallará.
 
-### 3. Dependencias de Python (`requirements.txt`)
-Las librerías requeridas por el proyecto son:
-* `watchdog==4.0.1` - Monitoreo del sistema de archivos.
-* `pdfplumber==0.11.1` - Extracción directa de texto de PDFs.
-* `pypdfium2==4.30.0` - Renderizado de páginas PDF a imagen para OCR.
-* `Pillow==10.3.0` - Procesamiento y manipulación de imágenes.
-* `pytesseract==0.3.10` - Interfaz de Python para Tesseract OCR.
-* `reportlab==4.2.0` - Generación de PDFs para scripts de prueba.
+*(Nota: Si distribuyes el `.exe`, el programa está programado para detectar si faltan estos dos componentes e intentará instalarlos automáticamente mediante `winget` la primera vez que se abra).*
 
 ---
 
-## 🛠️ Paso a Paso para Empezar (Muy Importante)
+## 🛠️ Cómo Iniciar y Usar (Modo Ejecutable)
 
-Si es la primera vez que vas a usar el sistema, sigue estos **4 pasos estrictamente en orden**. La aplicación **NO funcionará** si intentas iniciarla sin antes cargar tus proveedores.
+La forma más cómoda de utilizar PDFWatcher es compilarlo.
 
-### Paso 1: Instalar dependencias iniciales
-1. Descarga o clona el repositorio.
-2. Haz doble clic en el archivo **`setup.bat`** (o ejecútalo desde tu consola).
-Este script instalará las librerías de Python requeridas y, si es posible, instalará Tesseract OCR y NAPS2 (programas base necesarios).
-3. **Abre NAPS2** (búscalo en el menú inicio de Windows) y crea un **Perfil** seleccionando tu escáner. Esto es obligatorio para que el escaneo automático funcione.
+### 1. Generar el Ejecutable
+Asegúrate de tener Python instalado y haz doble clic en el archivo **`build.bat`**. 
+El script instalará las dependencias necesarias de Python y generará una carpeta `dist/PDFWatcher` que contiene el archivo **`PDFWatcher.exe`**. 
 
-### Paso 2: Cargar tu CSV de ARCA
-Para que el sistema sepa reconocer a qué proveedor pertenece cada factura, debes darle un listado inicial:
-1. Descarga tu reporte de *Mis Comprobantes Recibidos* desde ARCA (en formato CSV). **Se recomienda descargar un histórico de 3 a 6 meses** para asegurar que el sistema memorice a todos tus proveedores recurrentes.
-2. Coloca ese archivo `.csv` directamente adentro de la carpeta **`CSV ARCA/`**.
+### 2. Abrir la Aplicación
+Haz doble clic en **`PDFWatcher.exe`**.
+Se abrirá automáticamente una pestaña en tu navegador web mostrando la interfaz gráfica de la aplicación. 
+*(Nota: Al cerrar la pestaña web, el proceso en segundo plano se apagará automáticamente luego de 15 segundos).*
 
-### Paso 3: Sincronizar Proveedores
-Una vez que tu CSV esté en la carpeta, debes actualizar la base de datos del sistema. Abre la consola en la carpeta del proyecto y ejecuta:
-```bash
-python update_suppliers.py
-```
-*(Sin esto, tu sistema no tendrá registrados proveedores para reconocer las facturas).*
+### 3. Cargar Proveedores (Paso Crucial Inicial)
+Si es la primera vez que lo abres:
+1. Ve a la pestaña **Cargar CSV de ARCA**.
+2. Descarga tu reporte histórico de *Mis Comprobantes Recibidos* desde la web de ARCA (se recomiendan al menos los últimos 6 meses para un buen aprendizaje inicial).
+3. Arrastra el archivo **.zip** o **.csv** al recuadro de la aplicación.
+4. El programa registrará a todos tus proveedores automáticamente. ¡Luego de esto, el sistema está listo para reconocer facturas!
 
-### Paso 4: Iniciar la Aplicación
-Con los proveedores ya cargados, ahora sí puedes arrancar el programa:
-```bash
-python app.py
-```
-Al ejecutarlo, **se abrirá automáticamente una ventana de tu navegador** con el panel de control (Dashboard). Desde ahí podrás activar el vigía para que empiece a organizar tus PDF, o bien iniciar escaneos manuales.
+### 4. Procesar Facturas
+- **Vigía en Segundo Plano:** Presiona "Iniciar" en el Panel General y cualquier documento que coloques en la carpeta `Facturas_A_Procesar` será ordenado al instante.
+- **Carga Manual:** En el mismo Panel General, puedes simplemente arrastrar un PDF o imagen al recuadro de "Carga Rápida" para procesarlo sin siquiera abrir las carpetas de Windows.
 
 ---
 
-### ⚙️ Configuraciones Opcionales Recomendadas
+## ⚙️ Configuración de Inteligencia Artificial
 
-* **Motor de IA (Gemini):** Para habilitar el rescate de facturas borrosas con inteligencia artificial, edita el archivo `config.py` y asigne su token a `AI_API_KEY = "tu-api-key"`.
-* **Ruta de Tesseract/NAPS2:** Si instalaste estos programas en rutas diferentes a las estándar, ajusta las rutas en `processor.py` y en `app.py`.
-* **Sincronización en la Nube:** Para respaldar tus facturas procesadas y acceder a ellas desde cualquier lugar, la forma más sencilla, segura y sin complicaciones es instalar la aplicación oficial **Google Drive para Escritorio** (o OneDrive/Dropbox) y configurarla para que sincronice automáticamente la carpeta `Facturas_Procesadas` del proyecto.
+Para activar la inteligencia artificial de **Gemini** que rescata facturas ilegibles:
+1. Ve a [Google AI Studio](https://aistudio.google.com/) y genera una API Key gratuita.
+2. Abre la aplicación PDFWatcher y ve a la pestaña **Ajustes**.
+3. Pega tu clave y dale a "Guardar". La clave quedará guardada de forma encriptada y segura en tu equipo local (`api_key.txt`).
 
 ---
 
-## 📂 Estructura de Archivos del Proyecto
-
-```markdown
-├── CSV ARCA/                 # Carpeta para colocar reportes de ARCA (.csv)
-├── Facturas_A_Procesar/       # Carpeta de entrada monitoreada en tiempo real
-├── Facturas_Procesadas/       # Salida organizada jerárquicamente por fecha y proveedor
-├── Facturas_No_Reconocidas/   # Archivos no clasificados y log de errores
-│   └── errores_procesamiento.txt  # Historial descriptivo de fallas de clasificación
-├── config.py                 # Configuración de carpetas y diccionario de proveedores
-├── processor.py              # Lógica de OCR, extracción, matching de CUIT/CAE y ruteo
-├── update_suppliers.py       # Utilidad para importar/actualizar proveedores desde ARCA CSV
-├── main.py                   # Servicio watchdog iniciador del monitoreo
-├── requirements.txt          # Requerimientos de librerías Python
-└── setup.bat                 # Instalador automatizado de dependencias para Windows
-```
+## 📂 Modo Desarrollador (Para modificaciones)
+Si deseas trabajar en el código fuente en lugar del `.exe`:
+1. Ejecuta `setup.bat` para instalar las librerías (`requirements.txt`).
+2. Para iniciar la interfaz, simplemente ejecuta:
+   ```bash
+   python app.py
+   ```
