@@ -6,6 +6,7 @@
     <title>PDFWatcher - Gestión de Facturas</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -34,7 +35,17 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     <span>Cargar CSV</span>
                 </li>
+                <li data-tab="settings">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Ajustes</span>
+                </li>
             </ul>
+            
+            <div style="margin-top: auto; padding: 1rem; margin-bottom: 1rem;">
+                <button id="btn-help" class="btn btn-secondary" style="width: 100%;">
+                    <i class="fa-solid fa-circle-info"></i> Ayuda
+                </button>
+            </div>
         </nav>
 
         <!-- Main Content Area -->
@@ -217,16 +228,37 @@
                         <div class="upload-icon-container">
                             <i class="fa-solid fa-cloud-arrow-up"></i>
                         </div>
-                        <h3>Arrastra y suelta tu archivo CSV aquí</h3>
+                        <h3>Arrastra y suelta tu archivo CSV o ZIP aquí</h3>
                         <p>o</p>
                         <label for="file-upload" class="btn btn-outline">Seleccionar archivo</label>
-                        <input type="file" id="file-upload" accept=".csv" style="display: none;">
-                        <p class="file-hint">Solo se admiten archivos .csv de ARCA</p>
+                        <input type="file" id="file-upload" accept=".csv,.zip" style="display: none;">
+                        <p class="file-hint">Solo se admiten archivos .csv o .zip de ARCA</p>
                     </div>
                     
                     <div id="upload-status" class="upload-status" style="display: none;">
                         <div class="loader"></div>
                         <p>Procesando e identificando nuevos proveedores...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Settings -->
+            <section id="tab-settings" class="tab-pane fade-in" style="display: none;">
+                <header class="section-header">
+                    <h1>Ajustes de la Aplicación</h1>
+                    <p>Configura las opciones de Inteligencia Artificial para reconocer facturas borrosas.</p>
+                </header>
+
+                <div class="glass-card">
+                    <h3>API Key de Gemini (Opcional)</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                        Esta clave se guarda EXCLUSIVAMENTE a nivel local en tu computadora. NO se subirá a ningún lado y respeta todas las normas de privacidad. Tus datos sensibles nunca saldrán de tu PC de forma insegura.
+                    </p>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="password" id="input-api-key" placeholder="Pega tu API Key aquí..." style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                        <button id="btn-save-api-key" class="btn btn-primary">
+                            <i class="fa-solid fa-save"></i> Guardar
+                        </button>
                     </div>
                 </div>
             </section>
@@ -246,6 +278,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
 </html>

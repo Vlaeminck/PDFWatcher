@@ -1,3 +1,4 @@
+import sys
 import os
 import importlib
 from flask import Flask, render_template, jsonify, request, send_from_directory
@@ -6,7 +7,13 @@ from watcher import watcher_manager
 from update_suppliers import update_config_suppliers
 import config
 
-app = Flask(__name__)
+if getattr(sys, 'frozen', False):
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    app = Flask(__name__)
+
 app.config['UPLOAD_FOLDER'] = config.CSV_ARCA_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max
 
@@ -92,6 +99,8 @@ def processed_invoices():
 def serve_file(filepath):
     return send_from_directory(config.OUTPUT_FOLDER, filepath)
 
+import zipfile
+
 @app.route('/api/upload_csv', methods=['POST'])
 def upload_csv():
     if 'file' not in request.files:
@@ -100,20 +109,31 @@ def upload_csv():
     if file.filename == '':
         return jsonify({"success": False, "message": "Ningún archivo seleccionado"}), 400
         
-    if file and file.filename.lower().endswith('.csv'):
+    if file and (file.filename.lower().endswith('.csv') or file.filename.lower().endswith('.zip')):
         filename = secure_filename(file.filename)
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
         
+        if filename.lower().endswith('.zip'):
+            try:
+                with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                    for zip_info in zip_ref.infolist():
+                        if zip_info.filename.lower().endswith('.csv'):
+                            zip_info.filename = os.path.basename(zip_info.filename)
+                            zip_ref.extract(zip_info, app.config['UPLOAD_FOLDER'])
+                os.remove(file_path)
+            except Exception as e:
+                return jsonify({"success": False, "message": f"Error extrayendo ZIP: {e}"}), 500
+
         # Trigger update
         result = update_config_suppliers()
         if not result:
-            result = {"success": True, "message": "Proceso finalizado. Revisa la consola para más detalles."}
+            result = {"success": True, "message": "Proceso finalizado correctamente."}
         
         return jsonify(result)
         
-    return jsonify({"success": False, "message": "Tipo de archivo inválido. Solo se admiten archivos CSV."}), 400
+    return jsonify({"success": False, "message": "Tipo de archivo inválido. Solo se admiten archivos CSV o ZIP."}), 400
 
 @app.route('/api/watcher/start', methods=['POST'])
 def start_watcher():
@@ -124,6 +144,40 @@ def start_watcher():
 def stop_watcher():
     success, msg = watcher_manager.stop()
     return jsonify({"success": success, "message": msg})
+
+@app.route('/api/settings/api_key', methods=['POST'])
+def save_api_key():
+    data = request.get_json()
+    api_key = data.get('api_key', '').strip()
+    
+    if not api_key:
+        return jsonify({"success": False, "message": "La API Key no puede estar vacía"}), 400
+        
+    try:
+        config_path = os.path.join(config.BASE_DIR, 'config.py')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        import re
+        if 'AI_API_KEY' in content:
+            content = re.sub(r'AI_API_KEY\s*=\s*["\'].*?["\']', f'AI_API_KEY = "{api_key}"', content)
+        else:
+            content = content.replace("import os", f'import os\n\nAI_API_KEY = "{api_key}"\n', 1)
+        
+        with open(config_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        config.AI_API_KEY = api_key
+        return jsonify({"success": True, "message": "API Key guardada correctamente"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error al guardar la clave: {e}"}), 500
+
+@app.route('/api/settings/get_api_key', methods=['GET'])
+def get_api_key():
+    key = getattr(config, 'AI_API_KEY', '')
+    if key == "TU_API_KEY_AQUI":
+        key = ""
+    return jsonify({"api_key": key})
 
 import threading
 
@@ -211,56 +265,6 @@ if __name__ == '__main__':
 
     check_and_install_dependencies()
 
-    # Preguntar por la API Key si no está configurada
-    if not getattr(config, 'AI_API_KEY', '').strip():
-        try:
-            # En modo --windowed con PyInstaller, sys.stdin no existe y lanza RuntimeError
-            print("\n" + "="*65)
-            print("🤖 [Opcional] Rescate con Inteligencia Artificial (Gemini)")
-            print("="*65)
-            print("¿Deseas configurar una clave API de Gemini para poder leer facturas")
-            print("borrosas o difíciles automáticamente?")
-            print("\n[SEGURIDAD]: Esta clave se guarda EXCLUSIVAMENTE a nivel local en tu")
-            print("computadora (en el archivo config.py). NO se subirá a ningún lado,")
-            print("NO quedará expuesta en la web, y respeta todas las normas de privacidad.")
-            print("Tus datos sensibles nunca saldrán de tu PC de forma insegura.")
-            print("="*65)
-            
-            resp = input("¿Tienes una clave y deseas usarla? (S/N): ").strip().lower()
-            if resp == 's':
-                api_key = input("Pega tu API Key de Gemini: ").strip()
-                if api_key:
-                    try:
-                        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.py')
-                        with open(config_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                        
-                        if 'AI_API_KEY' in content:
-                            import re
-                            content = re.sub(r'AI_API_KEY\s*=\s*["\'].*?["\']', f'AI_API_KEY = "{api_key}"', content)
-                        else:
-                            content = content.replace("import os", f'import os\n\nAI_API_KEY = "{api_key}"\n', 1)
-                        
-                        with open(config_path, 'w', encoding='utf-8') as f:
-                            f.write(content)
-                        print("\n[✔] ¡Excelente! Clave guardada de forma segura en config.py.")
-                        
-                        # Cargarla en memoria para esta ejecución
-                        config.AI_API_KEY = api_key
-                    except Exception as e:
-                        print(f"\n[X] Error al guardar la clave: {e}")
-                else:
-                    print("\n[!] No ingresaste ninguna clave. Continuando sin IA...")
-            else:
-                print("\n[!] Entendido. Continuando sin IA. (Puedes agregarla luego manualmente en config.py)")
-        except RuntimeError as e:
-            if "lost sys.stdin" in str(e):
-                pass # Ignorar el error si estamos en modo --windowed sin consola
-            else:
-                print(f"Error de input: {e}")
-        except Exception:
-            pass # Ignorar otros errores de stdin
-            
     print("\nIniciando la aplicación web...")
 
     def open_browser():

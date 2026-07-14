@@ -444,8 +444,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleFiles(files) {
         if (files.length === 0) return;
         const file = files[0];
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            showToast("Solo se admiten archivos .csv", "error");
+        if (!file.name.toLowerCase().endsWith('.csv') && !file.name.toLowerCase().endsWith('.zip')) {
+            showToast("Solo se admiten archivos .csv o .zip", "error");
             return;
         }
         uploadFile(file);
@@ -482,6 +482,83 @@ document.addEventListener('DOMContentLoaded', () => {
                 dropZone.style.display = 'block';
                 fileInput.value = ''; // clear input
             }, 3000);
+        }
+    }
+
+    // --- Settings Tab ---
+    const btnSaveApiKey = document.getElementById('btn-save-api-key');
+    const inputApiKey = document.getElementById('input-api-key');
+
+    if (btnSaveApiKey && inputApiKey) {
+        // Cargar clave actual
+        fetch('/api/settings/get_api_key')
+            .then(res => res.json())
+            .then(data => {
+                if (data.api_key) inputApiKey.value = data.api_key;
+            }).catch(e => console.error("Error loading API Key", e));
+
+        btnSaveApiKey.addEventListener('click', async () => {
+            const apiKey = inputApiKey.value.trim();
+            if (!apiKey) {
+                showToast("Por favor ingresa una API Key", "warning");
+                return;
+            }
+            // Add loading state
+            const originalHTML = btnSaveApiKey.innerHTML;
+            btnSaveApiKey.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+            btnSaveApiKey.disabled = true;
+
+            try {
+                const res = await fetch('/api/settings/api_key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: apiKey })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                showToast("Error de conexión al guardar", 'error');
+            } finally {
+                btnSaveApiKey.innerHTML = originalHTML;
+                btnSaveApiKey.disabled = false;
+            }
+        });
+    }
+
+    // --- Driver.js Tutorial ---
+    if (window.driver) {
+        const driver = window.driver.js.driver;
+        
+        const driverObj = driver({
+            showProgress: true,
+            nextBtnText: 'Siguiente',
+            prevBtnText: 'Anterior',
+            doneBtnText: 'Entendido',
+            steps: [
+                { element: 'li[data-tab="dashboard"]', popover: { title: 'Panel General', description: 'Aquí podrás ver las estadísticas y controlar el inicio/fin del vigía de facturas.' } },
+                { element: 'li[data-tab="processed"]', popover: { title: 'Facturas Procesadas', description: 'Revisa tus facturas organizadas automáticamente por año, mes y proveedor.' } },
+                { element: 'li[data-tab="upload"]', popover: { title: 'Cargar CSV o ZIP', description: 'Sube aquí el archivo descargado de ARCA para registrar tus comprobantes.' } },
+                { element: 'li[data-tab="settings"]', popover: { title: 'Ajustes de IA', description: 'Configura tu API Key de Gemini para que la IA lea automáticamente facturas difíciles o borrosas.' } }
+            ]
+        });
+
+        const btnHelp = document.getElementById('btn-help');
+        if (btnHelp) {
+            btnHelp.addEventListener('click', () => {
+                driverObj.drive();
+            });
+        }
+
+        // Auto-start si es la primera vez
+        if (!localStorage.getItem('pdfwatcher_tutorial_seen')) {
+            setTimeout(() => {
+                driverObj.drive();
+                localStorage.setItem('pdfwatcher_tutorial_seen', 'true');
+            }, 1000);
         }
     }
 

@@ -14,20 +14,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo ===================================================
-echo [OPCIONAL] Configuracion de Inteligencia Artificial
-echo ===================================================
-echo Desea ingresar su API Key de Gemini para que el ejecutable 
-echo pueda rescatar facturas con IA? (S/N)
-set /p add_api="> "
-if /i "!add_api!"=="S" (
-    set /p api_key="Ingrese su API Key de Gemini: "
-    if not "!api_key!"=="" (
-        python -c "import re; f=open('config.py', 'r', encoding='utf-8'); c=f.read(); f.close(); c = re.sub(r'AI_API_KEY\s*=\s*[\"''].*?[\"'']', '', c); c = c.replace('import os', f'import os\n\nAI_API_KEY = \"{!api_key!}\"\n', 1); f=open('config.py', 'w', encoding='utf-8'); f.write(c); f.close()"
-        echo [OK] API Key inyectada en config.py.
-    )
-)
-echo.
+
 echo ===================================================
 echo [VERIFICACION] CSV ARCA
 echo ===================================================
