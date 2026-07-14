@@ -562,6 +562,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Heartbeat Ping ---
+    // Enviar ping cada 3 segundos para mantener el proceso vivo.
+    // Si cerramos la pestaña, el backend no recibe pings y se auto-apagará en 15s.
+    setInterval(() => {
+        fetch('/api/ping', { method: 'POST' }).catch(() => {});
+    }, 3000);
+
     // Init polling for status every 2 seconds if dashboard is active
     fetchStatus();
     setInterval(() => {

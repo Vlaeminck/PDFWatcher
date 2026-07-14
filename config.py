@@ -1,7 +1,4 @@
 import os
-
-AI_API_KEY = "TU_API_KEY_AQUI"
-
 import sys
 
 # Rutas Base (Relativas al proyecto para pruebas, pueden cambiarse a C:\...)
@@ -11,6 +8,16 @@ if getattr(sys, 'frozen', False):
 else:
     # Si se ejecuta el script normal
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+API_KEY_FILE = os.path.join(BASE_DIR, 'api_key.txt')
+if os.path.exists(API_KEY_FILE):
+    try:
+        with open(API_KEY_FILE, 'r', encoding='utf-8') as f:
+            AI_API_KEY = f.read().strip()
+    except Exception:
+        AI_API_KEY = ""
+else:
+    AI_API_KEY = ""
 
 INPUT_FOLDER = os.path.join(BASE_DIR, "Facturas_A_Procesar")
 OUTPUT_FOLDER = os.path.join(BASE_DIR, "Facturas_Procesadas")

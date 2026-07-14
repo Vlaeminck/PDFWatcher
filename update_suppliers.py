@@ -149,8 +149,9 @@ def extract_suppliers_from_csv_folder(csv_folder):
     return extracted_suppliers
 
 def update_config_suppliers():
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    CSV_FOLDER = os.path.join(BASE_DIR, "CSV ARCA")
+    import config
+    BASE_DIR = config.BASE_DIR
+    CSV_FOLDER = config.CSV_ARCA_FOLDER
     CONFIG_PATH = os.path.join(BASE_DIR, "config.py")
     
     # 1. Cargar proveedores existentes

@@ -1,5 +1,6 @@
-import sys
 import os
+import time
+import threading
 import importlib
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
@@ -17,6 +18,15 @@ else:
 app.config['UPLOAD_FOLDER'] = config.CSV_ARCA_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max
 
+# Control de ciclo de vida (Auto-Apagado)
+last_ping_time = time.time()
+
+@app.route('/api/ping', methods=['POST'])
+def ping():
+    global last_ping_time
+    last_ping_time = time.time()
+    return jsonify({"status": "ok"})
+
 @app.after_request
 def add_header(response):
     if request.path.startswith('/api/'):
@@ -28,7 +38,8 @@ def add_header(response):
 def count_files(directory):
     if not os.path.exists(directory):
         return 0
-    return sum(1 for root, dirs, files in os.walk(directory) for f in files if f.lower() not in ['.gitkeep', '.gitignore', 'desktop.ini'])
+    valid_exts = tuple(config.ALLOWED_EXTENSIONS)
+    return sum(1 for root, dirs, files in os.walk(directory) for f in files if f.lower().endswith(valid_exts))
 
 @app.route('/')
 def index():
@@ -135,6 +146,32 @@ def upload_csv():
         
     return jsonify({"success": False, "message": "Tipo de archivo inválido. Solo se admiten archivos CSV o ZIP."}), 400
 
+@app.route('/api/upload_invoice', methods=['POST'])
+def upload_invoice():
+    if 'file' not in request.files:
+        return jsonify({"success": False, "message": "No se envió ningún archivo"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"success": False, "message": "Ningún archivo seleccionado"}), 400
+        
+    valid_exts = tuple(config.ALLOWED_EXTENSIONS)
+    if file and file.filename.lower().endswith(valid_exts):
+        filename = secure_filename(file.filename)
+        # Añadir timestamp para evitar sobreescribir archivos con el mismo nombre
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        name, ext = os.path.splitext(filename)
+        new_filename = f"{name}_{timestamp}{ext}"
+        
+        file_path = os.path.join(config.INPUT_FOLDER, new_filename)
+        file.save(file_path)
+        
+        # Iniciar el vigía automáticamente
+        watcher_manager.start()
+        
+        return jsonify({"success": True, "message": "Factura cargada exitosamente"})
+        
+    return jsonify({"success": False, "message": "Tipo de archivo no permitido. Sube un PDF o Imagen."}), 400
+
 @app.route('/api/watcher/start', methods=['POST'])
 def start_watcher():
     success, msg = watcher_manager.start()
@@ -154,18 +191,9 @@ def save_api_key():
         return jsonify({"success": False, "message": "La API Key no puede estar vacía"}), 400
         
     try:
-        config_path = os.path.join(config.BASE_DIR, 'config.py')
-        with open(config_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        import re
-        if 'AI_API_KEY' in content:
-            content = re.sub(r'AI_API_KEY\s*=\s*["\'].*?["\']', f'AI_API_KEY = "{api_key}"', content)
-        else:
-            content = content.replace("import os", f'import os\n\nAI_API_KEY = "{api_key}"\n', 1)
-        
-        with open(config_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+        api_key_path = os.path.join(config.BASE_DIR, 'api_key.txt')
+        with open(api_key_path, 'w', encoding='utf-8') as f:
+            f.write(api_key)
             
         config.AI_API_KEY = api_key
         return jsonify({"success": True, "message": "API Key guardada correctamente"})
@@ -264,6 +292,23 @@ if __name__ == '__main__':
             print("="*65 + "\n")
 
     check_and_install_dependencies()
+
+    def check_timeout():
+        global last_ping_time
+        # Esperar 10 segundos inicialmente para dar tiempo a que abra el navegador
+        time.sleep(10)
+        while True:
+            time.sleep(3)
+            # Si pasan más de 15 segundos sin ping, significa que se cerró la pestaña web
+            if time.time() - last_ping_time > 15:
+                print("No se detectó actividad web. Apagando servidor...")
+                try:
+                    watcher_manager.stop()
+                except:
+                    pass
+                os._exit(0)
+                
+    threading.Thread(target=check_timeout, daemon=True).start()
 
     print("\nIniciando la aplicación web...")
 

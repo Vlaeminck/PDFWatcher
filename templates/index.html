@@ -82,6 +82,21 @@
                         </button>
                     </div>
                 </div>
+                
+                <!-- New Card for Drag & Drop Invoice -->
+                <div class="glass-card" style="margin-bottom: 2rem;">
+                    <h2 style="margin-bottom: 1rem;"><i class="fa-solid fa-file-invoice" style="margin-right: 10px; color: var(--accent-primary);"></i> Cargar Factura Manualmente</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Arrastra aquí una factura (PDF o Imagen) para procesarla inmediatamente en la base de datos.</p>
+                    
+                    <div id="invoice-drop-zone" class="drop-zone" style="min-height: 150px; padding: 2rem; border-color: var(--accent-primary);">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--accent-primary); margin-bottom: 1rem;"></i>
+                        <h3>Arrastra y suelta tu Factura aquí</h3>
+                        <p>o</p>
+                        <label for="invoice-file-upload" class="btn btn-outline" style="margin-top: 0.5rem; display: inline-block; cursor: pointer;">Seleccionar archivo</label>
+                        <input type="file" id="invoice-file-upload" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" style="display: none;" multiple>
+                        <p class="file-hint" style="margin-top: 1rem;">Formatos soportados: PDF, PNG, JPG, TIFF, BMP</p>
+                    </div>
+                </div>
 
                 <!-- Progress Bar (Hidden by default) -->
                 <div id="progress-container" class="glass-card" style="display: none; margin-bottom: 2rem;">
@@ -233,6 +248,12 @@
                         <label for="file-upload" class="btn btn-outline">Seleccionar archivo</label>
                         <input type="file" id="file-upload" accept=".csv,.zip" style="display: none;">
                         <p class="file-hint">Solo se admiten archivos .csv o .zip de ARCA</p>
+                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(74,144,226,0.1); border-radius: 8px; border-left: 4px solid var(--accent-primary);">
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0; text-align: left;">
+                                <i class="fa-solid fa-lightbulb" style="color: var(--accent-primary); margin-right: 5px;"></i>
+                                <strong>Recomendación:</strong> Descarga de ARCA al menos <strong>6 meses</strong> de comprobantes recibidos para inicializar tus proveedores. Luego, actualiza subiendo nuevos archivos <strong>cada 3 meses</strong>.
+                            </p>
+                        </div>
                     </div>
                     
                     <div id="upload-status" class="upload-status" style="display: none;">
