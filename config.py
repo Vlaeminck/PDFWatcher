@@ -10,10 +10,37 @@ else:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 API_KEY_FILE = os.path.join(BASE_DIR, 'api_key.txt')
+
+def obfuscate_key(key):
+    if not key or key == "TU_API_KEY_AQUI" or key.startswith("ENC:"):
+        return key
+    import random, string
+    reversed_key = key[::-1]
+    obfuscated = "ENC:"
+    for char in reversed_key:
+        junk = ''.join(random.choices(string.ascii_letters + string.digits, k=3))
+        obfuscated += char + junk
+    return obfuscated
+
+def deobfuscate_key(obf_key):
+    if not obf_key or obf_key == "TU_API_KEY_AQUI":
+        return obf_key
+    if obf_key.startswith("ENC:"):
+        payload = obf_key[4:]
+        reversed_key = payload[::4]
+        return reversed_key[::-1]
+    return obf_key
+
 if os.path.exists(API_KEY_FILE):
     try:
         with open(API_KEY_FILE, 'r', encoding='utf-8') as f:
-            AI_API_KEY = f.read().strip()
+            raw_key = f.read().strip()
+            AI_API_KEY = deobfuscate_key(raw_key)
+            
+            # Si la clave no estaba encriptada, la encriptamos y guardamos
+            if raw_key and raw_key != "TU_API_KEY_AQUI" and not raw_key.startswith("ENC:"):
+                with open(API_KEY_FILE, 'w', encoding='utf-8') as f_out:
+                    f_out.write(obfuscate_key(raw_key))
     except Exception:
         AI_API_KEY = "TU_API_KEY_AQUI"
 else:

@@ -195,21 +195,9 @@ def save_api_key():
     try:
         # Save to api_key.txt for compiled environments
         api_key_path = os.path.join(config.BASE_DIR, 'api_key.txt')
+        obfuscated_key = config.obfuscate_key(api_key)
         with open(api_key_path, 'w', encoding='utf-8') as f:
-            f.write(api_key)
-            
-        # Update config.py physically for developer visibility
-        config_py_path = os.path.join(config.BASE_DIR, 'config.py')
-        if os.path.exists(config_py_path):
-            import re
-            with open(config_py_path, 'r', encoding='utf-8') as f:
-                config_content = f.read()
-                
-            new_content = re.sub(r'AI_API_KEY\s*=\s*".*?"', f'AI_API_KEY = "{api_key}"', config_content)
-            
-            with open(config_py_path, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-                
+            f.write(obfuscated_key)
         config.AI_API_KEY = api_key
         return jsonify({"success": True, "message": "API Key guardada correctamente"})
     except Exception as e:

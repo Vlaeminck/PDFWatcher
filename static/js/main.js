@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Navigation ---
-    const navLinks = document.querySelectorAll('.nav-links li');
+    const navLinks = document.querySelectorAll('.nav-links li, li[data-tab="doctor"]');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
     navLinks.forEach(link => {
@@ -482,6 +482,86 @@ document.addEventListener('DOMContentLoaded', () => {
                 dropZone.style.display = 'block';
                 fileInput.value = ''; // clear input
             }, 3000);
+        }
+    }
+
+    // --- Invoice Upload ---
+    const invoiceDropZone = document.getElementById('invoice-drop-zone');
+    const invoiceFileInput = document.getElementById('invoice-file-upload');
+
+    if (invoiceDropZone && invoiceFileInput) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            invoiceDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            invoiceDropZone.addEventListener(eventName, () => {
+                invoiceDropZone.classList.add('dragover');
+                invoiceDropZone.style.background = 'rgba(74, 144, 226, 0.2)';
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            invoiceDropZone.addEventListener(eventName, () => {
+                invoiceDropZone.classList.remove('dragover');
+                invoiceDropZone.style.background = 'rgba(0,0,0,0.1)';
+            }, false);
+        });
+
+        invoiceDropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleInvoiceFiles(files);
+        });
+
+        invoiceFileInput.addEventListener('change', function() {
+            handleInvoiceFiles(this.files);
+        });
+
+        function handleInvoiceFiles(files) {
+            if (files.length === 0) return;
+            for (let i = 0; i < files.length; i++) {
+                uploadInvoice(files[i]);
+            }
+            invoiceFileInput.value = '';
+        }
+
+        async function uploadInvoice(file) {
+            const validExts = ['.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            
+            if (!validExts.includes(fileExt)) {
+                showToast(`Tipo de archivo no permitido: ${file.name}`, 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Cambiar icono temporalmente
+            const icon = invoiceDropZone.querySelector('i');
+            const oldClass = icon.className;
+            icon.className = 'fa-solid fa-spinner fa-spin';
+
+            try {
+                const response = await fetch('/api/upload_invoice', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(`Carga exitosa: ${file.name}`, 'success');
+                    fetchStatus(); // Refrescar contadores
+                } else {
+                    showToast(data.message || `Error al subir ${file.name}`, 'error');
+                }
+            } catch (error) {
+                console.error("Error invoice upload:", error);
+                showToast(`Error de red al subir ${file.name}`, 'error');
+            } finally {
+                icon.className = oldClass;
+            }
         }
     }
 
