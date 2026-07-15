@@ -111,7 +111,7 @@ def scan_database():
                             "severity": "medium",
                             "path": sup_path,
                             "folder_name": sup_folder,
-                            "message": f"Carpeta de proveedor '{sup_folder}' no se encuentra activo en config.py."
+                            "message": f"Carpeta de proveedor '{sup_folder}' no se encuentra activa en el sistema."
                         })
                         
                     # Verificar archivos atípicos
@@ -192,12 +192,17 @@ def fix_database():
                         if not os.path.exists(dst):
                             shutil.move(src, dst)
                         else:
+                            import uuid
                             # Evitar colisión, renombrar
-                            dst = os.path.join(target_dir, f"DUPLICADO_{f}")
+                            name, ext = os.path.splitext(f)
+                            dst = os.path.join(target_dir, f"{name}_DUPLICADO_{uuid.uuid4().hex[:6]}{ext}")
                             shutil.move(src, dst)
                     
                     # Eliminar la carpeta vieja que ahora está vacía
-                    os.rmdir(path)
+                    try:
+                        shutil.rmtree(path, ignore_errors=True)
+                    except Exception:
+                        pass
                     fixes_applied += 1
                     
         except Exception as e:

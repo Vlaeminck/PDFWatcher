@@ -571,9 +571,9 @@ def diagnose_error(text, file_path, supplier_found=None, regex_used=None):
             return (
                 "No se detectó ningún CUIT de 11 dígitos ni palabras clave de proveedores conocidos en el texto.\n"
                 "Esto sugiere que:\n"
-                "  1. El proveedor es totalmente nuevo (no está en config.py ni en los CSV de ARCA).\n"
+                "  1. El proveedor es totalmente nuevo (no está en el sistema ni en los CSV de ARCA).\n"
                 "  2. El OCR tuvo dificultades de lectura debido a tipografías complejas o baja calidad de imagen.\n"
-                "Acción recomendada: Verifique si el nombre comercial o CUIT son legibles en la imagen, agregue manualmente el proveedor en config.py o coloque la consulta de ARCA en 'CSV ARCA' y ejecute 'python update_suppliers.py'."
+                "Acción recomendada: Verifique si el nombre comercial o CUIT son legibles en la imagen, agregue manualmente el proveedor en el sistema o coloque la consulta de ARCA en 'CSV ARCA' y ejecute la carga."
             )
             
         cuit_details = []
@@ -625,18 +625,18 @@ def diagnose_error(text, file_path, supplier_found=None, regex_used=None):
             if csv_company_name:
                 cuit_details.append(
                     f"CUIT {cuit_fmt} (Corresponde a '{csv_company_name}' según ARCA CSV).\n"
-                    f"     Diagnóstico: El proveedor existe en los registros de ARCA pero no está dado de alta en config.py.\n"
-                    f"     Acción recomendada: Ejecute 'python update_suppliers.py' para registrarlo automáticamente en config.py, o agréguelo de forma manual."
+                    f"     Diagnóstico: El proveedor existe en los registros de ARCA pero no está dado de alta en el sistema.\n"
+                    f"     Acción recomendada: Ejecute 'python update_suppliers.py' para registrarlo automáticamente en el sistema, o agréguelo de forma manual."
                 )
             else:
                 cuit_details.append(
                     f"CUIT {cuit_fmt} (No se encontró en los CSV de ARCA).\n"
-                    f"     Diagnóstico: El CUIT no se encuentra en las bases de comprobantes de ARCA cargadas ni en config.py.\n"
-                    f"     Acción recomendada: Verifique si el OCR leyó con errores los números del CUIT o agregue manualmente el emisor en config.py."
+                    f"     Diagnóstico: El CUIT no se encuentra en las bases de comprobantes de ARCA cargadas ni en el sistema.\n"
+                    f"     Acción recomendada: Verifique si el OCR leyó con errores los números del CUIT o agregue manualmente el emisor."
                 )
                 
         return (
-            "Se detectaron CUITs en la factura pero no coinciden con ningún proveedor activo de config.py:\n  - " 
+            "Se detectaron CUITs en la factura pero no coinciden con ningún proveedor activo en el sistema:\n  - " 
             + "\n  - ".join(cuit_details)
         )
         
