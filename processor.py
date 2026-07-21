@@ -6,7 +6,8 @@ import datetime
 import pdfplumber
 import pypdfium2 as pdfium
 from PIL import Image
-from config import SUPPLIERS, OUTPUT_FOLDER, UNRECOGNIZED_FOLDER
+from config import OUTPUT_FOLDER, UNRECOGNIZED_FOLDER
+import config
 
 MONTHS_ES = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
@@ -32,6 +33,7 @@ def extract_text_via_ocr_image(image_path):
         return text.lower()
     except Exception as e:
         print(f"Error haciendo OCR en la imagen {image_path}: {e}", flush=True)
+        log_system_error(f"OCR de imagen {image_path} falló", str(e))
         return ""
     finally:
         if img:
@@ -52,6 +54,7 @@ def extract_text_via_ocr_pdf(pdf_path):
             text_parts.append(text)
     except Exception as e:
         print(f"Error haciendo OCR en el PDF {pdf_path}: {e}", flush=True)
+        log_system_error(f"OCR de PDF {pdf_path} falló", str(e))
     finally:
         if doc:
             doc.close()
@@ -68,6 +71,7 @@ def extract_text_from_pdf(pdf_path):
                     text += extracted + "\n"
     except Exception as e:
         print(f"Error leyendo PDF {pdf_path}: {e}", flush=True)
+        log_system_error(f"Extracción nativa de PDF {pdf_path} falló", str(e))
     return text.lower()
 
 def extract_text(file_path):
@@ -115,6 +119,14 @@ def extract_cuits_from_text(text):
             found.append(digits)
             seen.add(digits)
 
+    try:
+        from config import MY_CUIT
+        my_cuit_digits = re.sub(r'\D', '', MY_CUIT) if MY_CUIT else ""
+        if my_cuit_digits:
+            found = [c for c in found if c != my_cuit_digits]
+    except Exception:
+        pass
+        
     return found
 
 def load_arca_csvs():
@@ -123,8 +135,8 @@ def load_arca_csvs():
     """
     cae_index = {}
     arca_cuit_index = {}
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_folder = os.path.join(base_dir, "CSV ARCA")
+    from config import BASE_DIR
+    csv_folder = os.path.join(BASE_DIR, "CSV ARCA")
     if not os.path.exists(csv_folder):
         return cae_index, arca_cuit_index
 
@@ -216,7 +228,7 @@ def build_cuit_to_supplier_map():
     cuit_map = {}
     
     # 1. Primero, mapear por los CUITs declarados explícitamente en keywords
-    for supplier_name, data in SUPPLIERS.items():
+    for supplier_name, data in config.SUPPLIERS.items():
         for kw in data.get("keywords", []):
             digits = re.sub(r'\D', '', kw)
             if len(digits) == 11:
@@ -224,15 +236,15 @@ def build_cuit_to_supplier_map():
 
     # 2. Segundo, leer los CSV de ARCA y cruzar por nombre
     kw_to_supplier = {}
-    for supplier_name, data in SUPPLIERS.items():
+    for supplier_name, data in config.SUPPLIERS.items():
         kw_to_supplier[normalize_string(supplier_name)] = supplier_name
         for kw in data.get("keywords", []):
             kw_norm = normalize_string(kw)
             if not kw_norm.isdigit():
                 kw_to_supplier[kw_norm] = supplier_name
                 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_folder = os.path.join(base_dir, "CSV ARCA")
+    from config import BASE_DIR
+    csv_folder = os.path.join(BASE_DIR, "CSV ARCA")
     if os.path.exists(csv_folder):
         import csv
         import io
@@ -325,7 +337,7 @@ def find_supplier(text):
     longest_keyword_len = 0
     matched_keyword = ""
 
-    for supplier_name, data in SUPPLIERS.items():
+    for supplier_name, data in config.SUPPLIERS.items():
         for kw in data.get("keywords", []):
             kw_normalized = normalize_string(kw)
             # Evitar que los CUITs o números interfieran en el matching textual
@@ -473,7 +485,7 @@ def process_invoice(file_path):
     invoice_number = None
 
     if supplier_found:
-        data = SUPPLIERS[supplier_found]
+        data = config.SUPPLIERS[supplier_found]
         # Si se identificó por CAE, reconstruimos el número de factura de forma exacta desde ARCA CSV
         if match_method == "CAE" and csv_info:
             try:
@@ -519,6 +531,7 @@ def process_invoice(file_path):
             if ai_data and ai_data.get('numero_factura'):
                 invoice_number = ai_data['numero_factura']
                 print(f"  [OK] Numero rescatado por IA: {invoice_number}", flush=True)
+                log_system_error("IA_RESCATE_EXITOSO", f"Factura {invoice_number} de {supplier_found} sin número (Original: {file_path})")
                 if ai_data.get('keywords_optimizadas'):
                     save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
                 invoice_formatted = invoice_number.replace('-', ' - ')
@@ -551,6 +564,7 @@ def process_invoice(file_path):
                 except Exception:
                     pass
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
+            log_system_error("IA_RESCATE_EXITOSO", f"Proveedor no reconocido originalmente -> Factura {invoice_number} de {supplier_found} (Original: {file_path})")
             if ai_data.get('keywords_optimizadas'):
                 save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
             invoice_formatted = invoice_number.replace('-', ' - ')
@@ -579,8 +593,8 @@ def diagnose_error(text, file_path, supplier_found=None, regex_used=None):
         cuit_details = []
         for cuit in detected_cuits:
             csv_company_name = None
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            csv_folder = os.path.join(base_dir, "CSV ARCA")
+            from config import BASE_DIR
+            csv_folder = os.path.join(BASE_DIR, "CSV ARCA")
             if os.path.exists(csv_folder):
                 import csv
                 import io
@@ -649,9 +663,21 @@ def diagnose_error(text, file_path, supplier_found=None, regex_used=None):
         f"  3. Revise si el OCR distorsionó el número de comprobante."
     )
 
+def log_system_error(context, exception_details):
+    try:
+        from config import REGISTROS_FOLDER
+        ensure_dir(REGISTROS_FOLDER)
+        log_path = os.path.join(REGISTROS_FOLDER, "errores_debug.txt")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] ERROR DE SISTEMA - {context}: {exception_details}\n")
+    except:
+        pass
+
 def log_error_to_file(file_path, error_type, details=None):
-    ensure_dir(UNRECOGNIZED_FOLDER)
-    log_path = os.path.join(UNRECOGNIZED_FOLDER, "errores_procesamiento.txt")
+    from config import REGISTROS_FOLDER
+    ensure_dir(REGISTROS_FOLDER)
+    log_path = os.path.join(REGISTROS_FOLDER, "errores_debug.txt")
     
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     file_name = os.path.basename(file_path)
@@ -902,3 +928,12 @@ def save_ai_supplier(nombre, cuit, keywords):
         _CUIT_INDEX = build_cuit_to_supplier_map()
     except Exception as e:
         print(f"Error guardando proveedor de IA: {e}", flush=True)
+
+
+def reload_config():
+    global _CUIT_INDEX, _CAE_INDEX, _ARCA_CUIT_INDEX
+    import config
+    import importlib
+    importlib.reload(config)
+    _CUIT_INDEX = build_cuit_to_supplier_map()
+    _CAE_INDEX, _ARCA_CUIT_INDEX = load_arca_csvs()

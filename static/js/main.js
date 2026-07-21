@@ -55,6 +55,93 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000);
     }
 
+    // --- License Check ---
+    const licenseStatusBadge = document.getElementById('license-status-badge');
+    const licenseStatusText = document.getElementById('license-status-text');
+    const inputHardwareId = document.getElementById('input-hardware-id');
+    const btnCopyHwId = document.getElementById('btn-copy-hwid');
+    const expBanner = document.getElementById('expiration-banner');
+    const expText = document.getElementById('expiration-text');
+    const btnSyncLicense = document.getElementById('btn-sync-license');
+    let isLicenseValid = true; // Default to true until checked, or default to false and let check enable it
+
+    async function fetchLicenseStatus(force = false) {
+        try {
+            const url = force ? '/api/license/status?force=true' : '/api/license/status';
+            const res = await fetch(url);
+            const data = await res.json();
+            
+            if (inputHardwareId) {
+                inputHardwareId.value = data.hw_id || 'ERROR';
+            }
+
+            if (data.valid) {
+                isLicenseValid = true;
+                if (licenseStatusBadge) {
+                    licenseStatusBadge.className = 'status-badge status-active';
+                    licenseStatusText.textContent = data.message || 'Activa';
+                }
+                
+                if (data.days_left !== undefined && data.days_left !== null && data.days_left <= 15) {
+                    if (expBanner && expText) {
+                        expBanner.style.display = 'block';
+                        expText.textContent = `Atención: Tu licencia expirará en ${data.days_left} día(s).`;
+                    }
+                } else {
+                    if (expBanner) expBanner.style.display = 'none';
+                }
+            } else {
+                isLicenseValid = false;
+                if (licenseStatusBadge) {
+                    licenseStatusBadge.className = 'status-badge status-inactive';
+                    licenseStatusText.textContent = 'Inactiva / No Registrada';
+                }
+                
+                // Deshabilitar botones principales si hay referencias
+                const bStart = document.getElementById('btn-start-watcher');
+                const bStop = document.getElementById('btn-stop-watcher');
+                const bScan = document.getElementById('btn-open-scanner');
+                
+                if (bStart) bStart.disabled = true;
+                if (bStop) bStop.disabled = true;
+                if (bScan) bScan.disabled = true;
+                
+                // Force update UI
+                updateWatcherStatusUI(false);
+                
+                if (expBanner) expBanner.style.display = 'none';
+                
+                showToast(`Licencia Inválida: ${data.message || 'Contacta al administrador'}`, 'error');
+            }
+        } catch (error) {
+            console.error("Error fetching license status:", error);
+            if (licenseStatusBadge) {
+                licenseStatusBadge.className = 'status-badge status-inactive';
+                licenseStatusText.textContent = 'Error de Conexión';
+            }
+        }
+    }
+
+    if (btnCopyHwId) {
+        btnCopyHwId.addEventListener('click', () => {
+            if (inputHardwareId && inputHardwareId.value) {
+                navigator.clipboard.writeText(inputHardwareId.value)
+                    .then(() => showToast('Hardware ID copiado al portapapeles', 'success'))
+                    .catch(err => showToast('Error al copiar ID', 'error'));
+            }
+        });
+    }
+
+    if (btnSyncLicense) {
+        btnSyncLicense.addEventListener('click', async () => {
+            const icon = btnSyncLicense.querySelector('i');
+            icon.classList.add('fa-spin');
+            await fetchLicenseStatus(true);
+            icon.classList.remove('fa-spin');
+            showToast('Licencia sincronizada con Firebase', 'success');
+        });
+    }
+
     // --- Dashboard & Watcher Controls ---
     const btnStart = document.getElementById('btn-start-watcher');
     const btnStop = document.getElementById('btn-stop-watcher');
@@ -118,6 +205,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateWatcherStatusUI(isRunning) {
+        if (!isLicenseValid) {
+            statusText.textContent = 'BLOQUEADO (Sin Licencia)';
+            statusBadge.className = 'status-badge status-inactive';
+            if (btnStart) btnStart.disabled = true;
+            if (btnStop) btnStop.disabled = true;
+            return;
+        }
+        
         if (isRunning) {
             statusText.textContent = 'ACTIVO (Escuchando...)';
             statusBadge.className = 'status-badge status-active';
@@ -650,12 +745,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
 
     // Init polling for status every 2 seconds if dashboard is active
+    fetchLicenseStatus(); // Initial fetch
     fetchStatus();
     setInterval(() => {
         const activeTab = document.querySelector('.nav-links li.active');
         if (activeTab && activeTab.dataset.tab === 'dashboard') {
             fetchStatus();
             fetchProgress();
+            // We can also poll license periodically if we want, e.g. every 10 mins
         }
     }, 2000);
 

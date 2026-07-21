@@ -62,6 +62,16 @@ os.makedirs(REGISTROS_FOLDER, exist_ok=True)
 # Extensiones a monitorear
 ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"]
 
+# CUIT propio para ignorar en logs de OCR (Receptor)
+MY_CUIT_FILE = os.path.join(BASE_DIR, 'my_cuit.txt')
+MY_CUIT = ""
+if os.path.exists(MY_CUIT_FILE):
+    try:
+        with open(MY_CUIT_FILE, 'r', encoding='utf-8') as f:
+            MY_CUIT = f.read().strip()
+    except Exception:
+        pass
+
 import json
 
 SUPPLIERS_FILE = os.path.join(BASE_DIR, "suppliers.json")

@@ -9,6 +9,7 @@ from watcher import watcher_manager
 from update_suppliers import update_config_suppliers
 import doctor
 import config
+import license_manager
 
 if getattr(sys, 'frozen', False):
     template_folder = os.path.join(sys._MEIPASS, 'templates')
@@ -141,6 +142,11 @@ def upload_csv():
 
         # Trigger update
         result = update_config_suppliers()
+        
+        # Reload processor indices and config so it recognizes new suppliers without restarting
+        import processor
+        processor.reload_config()
+        
         if not result:
             result = {"success": True, "message": "Proceso finalizado correctamente."}
         
@@ -174,8 +180,21 @@ def upload_invoice():
         
     return jsonify({"success": False, "message": "Tipo de archivo no permitido. Sube un PDF o Imagen."}), 400
 
+@app.route('/api/license/status')
+def license_status():
+    force = request.args.get('force', 'false').lower() == 'true'
+    status = license_manager.check_license_status(force_network=force)
+    return jsonify(status)
+
 @app.route('/api/watcher/start', methods=['POST'])
 def start_watcher():
+    lic_status = license_manager.check_license_status()
+    if not lic_status.get("valid"):
+        return jsonify({"success": False, "message": f"Licencia inactiva: {lic_status.get('message')}"})
+    
+    import processor
+    processor.reload_config()
+    
     success, msg = watcher_manager.start()
     return jsonify({"success": success, "message": msg})
 
@@ -210,6 +229,37 @@ def get_api_key():
         key = ""
     return jsonify({"api_key": key})
 
+@app.route('/api/settings/cuit', methods=['POST'])
+def save_cuit():
+    data = request.get_json()
+    cuit = data.get('cuit', '').strip()
+    
+    import re
+    cuit_digits = re.sub(r'\D', '', cuit)
+    if len(cuit_digits) == 11:
+        cuit_formatted = f"{cuit_digits[:2]}-{cuit_digits[2:10]}-{cuit_digits[10]}"
+    else:
+        cuit_formatted = cuit
+    
+    try:
+        cuit_path = os.path.join(config.BASE_DIR, 'my_cuit.txt')
+        with open(cuit_path, 'w', encoding='utf-8') as f:
+            f.write(cuit_formatted)
+        config.MY_CUIT = cuit_formatted
+        
+        # Recargar para que processor también se entere (por si acaso)
+        import processor
+        processor.reload_config()
+        
+        return jsonify({"success": True, "message": "CUIT guardado correctamente"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error al guardar CUIT: {e}"}), 500
+
+@app.route('/api/settings/get_cuit', methods=['GET'])
+def get_cuit():
+    cuit = getattr(config, 'MY_CUIT', '')
+    return jsonify({"cuit": cuit})
+
 @app.route('/api/doctor/scan', methods=['GET'])
 def doctor_scan():
     try:
@@ -232,6 +282,10 @@ scanning_lock = threading.Lock()
 
 @app.route('/api/open_scanner', methods=['POST'])
 def open_scanner():
+    lic_status = license_manager.check_license_status()
+    if not lic_status.get("valid"):
+        return jsonify({"success": False, "message": f"Licencia inactiva: {lic_status.get('message')}"})
+        
     import subprocess
     import os
     import time

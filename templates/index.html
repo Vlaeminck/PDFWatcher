@@ -273,8 +273,31 @@
             <section id="tab-settings" class="tab-pane fade-in" style="display: none;">
                 <header class="section-header">
                     <h1>Ajustes de la Aplicación</h1>
-                    <p>Configura las opciones de Inteligencia Artificial para reconocer facturas borrosas.</p>
+                    <p>Configura las opciones de Inteligencia Artificial para reconocer facturas borrosas e información de tu Licencia.</p>
                 </header>
+
+                <div class="glass-card" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h3>Licencia de Uso</h3>
+                            <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                                Identificador único de tu computadora. Debes registrar este ID con el administrador para habilitar el uso de todas las funciones.
+                            </p>
+                        </div>
+                        <div class="status-badge" id="license-status-badge" style="margin: 0; background: rgba(255, 255, 255, 0.1);">
+                            <span id="license-status-text">Verificando...</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="input-hardware-id" readonly placeholder="Cargando ID..." style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-primary); font-family: monospace; font-size: 1.1rem; letter-spacing: 1px; text-align: center; cursor: text;">
+                        <button id="btn-copy-hwid" class="btn btn-secondary">
+                            <i class="fa-solid fa-copy"></i> Copiar ID
+                        </button>
+                        <button id="btn-sync-license" class="btn btn-primary" title="Forzar actualización con Firebase">
+                            <i class="fa-solid fa-rotate"></i> Sincronizar
+                        </button>
+                    </div>
+                </div>
 
                 <div class="glass-card">
                     <h3>API Key de Gemini (Opcional)</h3>
@@ -285,6 +308,18 @@
                         <input type="password" id="input-api-key" placeholder="Pega tu API Key aquí..." style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
                         <button id="btn-save-api-key" class="btn btn-primary">
                             <i class="fa-solid fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+                <div class="glass-card" style="margin-top: 1rem;">
+                    <h3>Mi CUIT (Receptor)</h3>
+                    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
+                        Ingresa el CUIT de tu empresa. El sistema lo ignorará al escanear facturas para evitar confundirlo con el CUIT del proveedor.
+                    </p>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <input type="text" id="input-my-cuit" placeholder="Ej: 30714817767" style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                        <button id="btn-save-cuit" class="btn btn-primary">
+                            <i class="fa-solid fa-save"></i> Guardar CUIT
                         </button>
                     </div>
                 </div>
@@ -336,6 +371,11 @@
                 <iframe id="modal-iframe" src="" frameborder="0" width="100%" height="600px"></iframe>
             </div>
         </div>
+    </div>
+
+    <!-- Expiration Banner -->
+    <div id="expiration-banner" style="display: none; position: fixed; bottom: 0; right: 0; left: 250px; background: rgba(231, 76, 60, 0.9); color: white; text-align: center; padding: 10px; font-weight: 500; z-index: 9999; backdrop-filter: blur(5px); border-top: 1px solid rgba(255,255,255,0.2);">
+        <i class="fa-solid fa-clock"></i> <span id="expiration-text">Tu licencia expirará en X días.</span>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
