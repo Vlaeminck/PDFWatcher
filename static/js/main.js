@@ -3,32 +3,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const navLinks = document.querySelectorAll('.nav-links li, li[data-tab="doctor"]');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
+    function switchTab(tabName) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        tabPanes.forEach(p => p.style.display = 'none');
+        
+        const activeLink = document.querySelector(`.nav-links li[data-tab="${tabName}"]`);
+        if (activeLink) activeLink.classList.add('active');
+
+        const targetTab = document.getElementById(`tab-${tabName}`);
+        if (targetTab) {
+            targetTab.style.display = 'block';
+            targetTab.classList.remove('fade-in');
+            void targetTab.offsetWidth;
+            targetTab.classList.add('fade-in');
+        }
+
+        if (tabName === 'dashboard') {
+            fetchStatus();
+            fetchProgress();
+        }
+        if (tabName === 'suppliers') fetchSuppliers();
+        if (tabName === 'processed') fetchProcessedInvoices();
+        if (tabName === 'remitos') fetchProcessedRemitos();
+        if (tabName === 'unrecognized') fetchUnrecognizedInvoices();
+    }
+
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
-            // Remove active from all
-            navLinks.forEach(l => l.classList.remove('active'));
-            tabPanes.forEach(p => p.style.display = 'none');
-            
-            // Add active to clicked
-            link.classList.add('active');
-            const targetTab = document.getElementById(`tab-${link.dataset.tab}`);
-            if (targetTab) {
-                targetTab.style.display = 'block';
-                targetTab.classList.remove('fade-in');
-                // trigger reflow to restart animation
-                void targetTab.offsetWidth;
-                targetTab.classList.add('fade-in');
-            }
-
-            // Fetch data if needed based on tab
-            if (link.dataset.tab === 'dashboard') {
-                fetchStatus();
-                fetchProgress();
-            }
-            if (link.dataset.tab === 'suppliers') fetchSuppliers();
-            if (link.dataset.tab === 'processed') fetchProcessedInvoices();
-            if (link.dataset.tab === 'remitos') fetchProcessedRemitos();
-            if (link.dataset.tab === 'unrecognized') fetchUnrecognizedInvoices();
+            switchTab(link.dataset.tab);
         });
     });
 
@@ -159,22 +161,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const cardUnrecognized = document.getElementById('card-unrecognized');
 
     if (cardProcessed) {
-        cardProcessed.addEventListener('click', () => {
-            const target = document.querySelector('[data-tab="processed"]');
-            if (target) target.click();
-        });
+        cardProcessed.addEventListener('click', () => switchTab('processed'));
     }
     if (cardRemitos) {
-        cardRemitos.addEventListener('click', () => {
-            const target = document.querySelector('[data-tab="remitos"]');
-            if (target) target.click();
-        });
+        cardRemitos.addEventListener('click', () => switchTab('remitos'));
     }
     if (cardUnrecognized) {
-        cardUnrecognized.addEventListener('click', () => {
-            const target = document.querySelector('[data-tab="unrecognized"]');
-            if (target) target.click();
-        });
+        cardUnrecognized.addEventListener('click', () => switchTab('unrecognized'));
     }
 
     async function fetchStatus() {
@@ -1100,4 +1093,205 @@ document.addEventListener('DOMContentLoaded', () => {
             doctorResultsList.appendChild(div);
         });
     }
+
+    // --- ARCA Credentials & Bot Sync ---
+    const inputArcaCuit = document.getElementById('input-arca-cuit');
+    const inputArcaClave = document.getElementById('input-arca-clave');
+    const inputArcaRepresentada = document.getElementById('input-arca-representada');
+    const btnSaveArcaCreds = document.getElementById('btn-save-arca-creds');
+    const arcaStatusBadge = document.getElementById('arca-status-badge');
+    const arcaStatusText = document.getElementById('arca-status-text');
+    const btnSyncArca = document.getElementById('btn-sync-arca');
+    const btnSyncArcaUpload = document.getElementById('btn-sync-arca-upload');
+    const arcaSyncStatusMsg = document.getElementById('arca-sync-status-msg');
+
+    async function fetchArcaCredentials() {
+        try {
+            const res = await fetch('/api/arca/credentials');
+            const data = await res.json();
+            if (data.configured) {
+                if (inputArcaCuit) inputArcaCuit.value = data.cuit || '';
+                if (inputArcaRepresentada) inputArcaRepresentada.value = data.representada || '';
+                if (inputArcaClave && data.has_clave) inputArcaClave.value = '••••••••';
+                if (arcaStatusBadge && arcaStatusText) {
+                    arcaStatusBadge.className = 'status-badge status-active';
+                    arcaStatusText.textContent = 'Configurada';
+                }
+            } else {
+                if (arcaStatusBadge && arcaStatusText) {
+                    arcaStatusBadge.className = 'status-badge status-inactive';
+                    arcaStatusText.textContent = 'Sin configurar';
+                }
+            }
+        } catch (e) {
+            console.error("Error fetching ARCA credentials:", e);
+        }
+    }
+
+    if (btnSaveArcaCreds) {
+        btnSaveArcaCreds.addEventListener('click', async () => {
+            const cuit = inputArcaCuit.value.trim();
+            const clave = inputArcaClave.value.trim();
+            const representada = inputArcaRepresentada ? inputArcaRepresentada.value.trim() : '';
+            
+            if (!cuit || cuit.length !== 11) {
+                showToast("Ingresa un CUIT de usuario válido (11 dígitos)", "error");
+                return;
+            }
+            if (!clave) {
+                showToast("Ingresa la Clave Fiscal de ARCA", "error");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/arca/credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cuit, clave, representada })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, "success");
+                    inputArcaClave.value = '••••••••';
+                    fetchArcaCredentials();
+                } else {
+                    showToast(data.message || "Error al guardar credenciales", "error");
+                }
+            } catch (e) {
+                console.error("Error saving ARCA creds:", e);
+                showToast("Error de red al guardar credenciales de ARCA", "error");
+            }
+        });
+    }
+
+    let arcaPollInterval = null;
+
+    async function startArcaSync() {
+        try {
+            const res = await fetch('/api/arca/sync', { method: 'POST' });
+            const data = await res.json();
+            
+            if (!data.success) {
+                showToast(data.message, "error");
+                return;
+            }
+
+            showToast(data.message, "success");
+            if (btnSyncArca) btnSyncArca.disabled = true;
+            if (btnSyncArcaUpload) btnSyncArcaUpload.disabled = true;
+
+            if (arcaPollInterval) clearInterval(arcaPollInterval);
+            arcaPollInterval = setInterval(pollArcaStatus, 2000);
+        } catch (e) {
+            console.error("Error starting ARCA sync:", e);
+            showToast("Error al iniciar la sincronización con ARCA", "error");
+        }
+    }
+
+    const arcaHeaderBadge = document.getElementById('arca-header-badge');
+    const arcaHeaderIcon = document.getElementById('arca-header-icon');
+    const arcaHeaderStatusText = document.getElementById('arca-header-status-text');
+
+    async function pollArcaStatus() {
+        try {
+            const res = await fetch('/api/arca/status');
+            const status = await res.json();
+
+            if (arcaSyncStatusMsg) {
+                arcaSyncStatusMsg.textContent = status.message || status.step;
+            }
+
+            if (arcaHeaderBadge && arcaHeaderStatusText) {
+                if (status.running) {
+                    arcaHeaderBadge.style.display = 'inline-flex';
+                    arcaHeaderBadge.style.background = 'rgba(155, 89, 182, 0.2)';
+                    arcaHeaderBadge.style.color = '#9b59b6';
+                    arcaHeaderBadge.style.borderColor = 'rgba(155, 89, 182, 0.4)';
+                    if (arcaHeaderIcon) arcaHeaderIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
+                    arcaHeaderStatusText.textContent = status.message || status.step;
+                } else if (status.step === 'COMPLETED') {
+                    arcaHeaderBadge.style.display = 'inline-flex';
+                    arcaHeaderBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+                    arcaHeaderBadge.style.color = '#34d399';
+                    arcaHeaderBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                    if (arcaHeaderIcon) arcaHeaderIcon.className = 'fa-solid fa-circle-check';
+                    arcaHeaderStatusText.textContent = 'ARCA Sincronizado';
+                } else if (status.step === 'ERROR') {
+                    arcaHeaderBadge.style.display = 'inline-flex';
+                    arcaHeaderBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+                    arcaHeaderBadge.style.color = '#f87171';
+                    arcaHeaderBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                    if (arcaHeaderIcon) arcaHeaderIcon.className = 'fa-solid fa-triangle-exclamation';
+                    arcaHeaderStatusText.textContent = 'Error en ARCA';
+                }
+            }
+
+            if (!status.running) {
+                clearInterval(arcaPollInterval);
+                arcaPollInterval = null;
+                if (btnSyncArca) btnSyncArca.disabled = false;
+                if (btnSyncArcaUpload) btnSyncArcaUpload.disabled = false;
+
+                if (status.step === 'COMPLETED') {
+                    showToast(status.message, "success");
+                    fetchSuppliers();
+                } else if (status.step === 'ERROR') {
+                    showToast(status.message || status.last_error, "error");
+                }
+            }
+        } catch (e) {
+            console.error("Error polling ARCA status:", e);
+        }
+    }
+
+    if (btnSyncArca) btnSyncArca.addEventListener('click', startArcaSync);
+    if (btnSyncArcaUpload) btnSyncArcaUpload.addEventListener('click', startArcaSync);
+
+    // --- Modal de Logs de ARCA ---
+    const btnViewArcaLogs = document.getElementById('btn-view-arca-logs');
+    const arcaLogsModal = document.getElementById('arca-logs-modal');
+    const arcaLogsContent = document.getElementById('arca-logs-content');
+    const btnRefreshArcaLogs = document.getElementById('btn-refresh-arca-logs');
+    const closeArcaModalBtns = document.querySelectorAll('.close-arca-modal');
+
+    async function fetchArcaLogs() {
+        if (!arcaLogsContent) return;
+        arcaLogsContent.textContent = 'Cargando registros...';
+        try {
+            const res = await fetch('/api/arca/logs');
+            const data = await res.json();
+            arcaLogsContent.textContent = data.logs || 'No se registraron entradas.';
+            arcaLogsContent.scrollTop = arcaLogsContent.scrollHeight;
+        } catch (e) {
+            arcaLogsContent.textContent = `Error al cargar logs: ${e}`;
+        }
+    }
+
+    if (btnViewArcaLogs) {
+        btnViewArcaLogs.addEventListener('click', () => {
+            fetchArcaLogs();
+            if (arcaLogsModal) {
+                arcaLogsModal.style.display = 'flex';
+                arcaLogsModal.classList.add('fade-in');
+            }
+        });
+    }
+
+    if (btnRefreshArcaLogs) {
+        btnRefreshArcaLogs.addEventListener('click', fetchArcaLogs);
+    }
+
+    closeArcaModalBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (arcaLogsModal) arcaLogsModal.style.display = 'none';
+        });
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target == arcaLogsModal) {
+            arcaLogsModal.style.display = 'none';
+        }
+    });
+
+    fetchArcaCredentials();
 });

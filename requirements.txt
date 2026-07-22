@@ -8,3 +8,5 @@ flask
 werkzeug
 google-generativeai
 requests
+selenium
+webdriver-manager

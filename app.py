@@ -364,6 +364,64 @@ def get_cuit():
     cuit = getattr(config, 'MY_CUIT', '')
     return jsonify({"cuit": cuit})
 
+# --- Rutas Bot Sincronización ARCA ---
+import arca_bot
+
+@app.route('/api/arca/credentials', methods=['GET', 'POST'])
+def arca_credentials():
+    if request.method == 'GET':
+        creds = arca_bot.get_arca_credentials()
+        if creds:
+            return jsonify({
+                "configured": True,
+                "cuit": creds.get("cuit", ""),
+                "representada": creds.get("representada", ""),
+                "has_clave": bool(creds.get("clave")),
+                "updated_at": creds.get("updated_at")
+            })
+        return jsonify({"configured": False, "cuit": "", "representada": "", "has_clave": False})
+    
+    data = request.json or {}
+    cuit = data.get("cuit", "")
+    clave = data.get("clave", "")
+    representada = data.get("representada", "")
+    try:
+        arca_bot.save_arca_credentials(cuit, clave, representada)
+        return jsonify({"success": True, "message": "Credenciales de ARCA guardadas de forma segura."})
+    except ValueError as ve:
+        return jsonify({"success": False, "message": str(ve)}), 400
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Error guardando credenciales: {e}"}), 500
+
+@app.route('/api/arca/sync', methods=['POST'])
+def arca_sync():
+    lic_status = license_manager.check_license_status()
+    if not lic_status.get("valid"):
+        return jsonify({"success": False, "message": f"Licencia inactiva: {lic_status.get('message')}"})
+    
+    creds = arca_bot.get_arca_credentials()
+    if not creds or not creds.get("cuit") or not creds.get("clave"):
+        return jsonify({"success": False, "message": "Debes configurar tu CUIT y Clave Fiscal de ARCA en Ajustes antes de sincronizar."}), 400
+
+    status = arca_bot.get_bot_status()
+    if status.get("running"):
+        return jsonify({"success": False, "message": "La sincronización con ARCA ya está en curso."})
+
+    def run_async():
+        arca_bot.run_arca_bot_sync()
+
+    thread = threading.Thread(target=run_async)
+    thread.start()
+    return jsonify({"success": True, "message": "Iniciando sincronización automatizada con ARCA..."})
+
+@app.route('/api/arca/status', methods=['GET'])
+def arca_status():
+    return jsonify(arca_bot.get_bot_status())
+
+@app.route('/api/arca/logs', methods=['GET'])
+def arca_logs():
+    return jsonify({"logs": arca_bot.get_arca_logs()})
+
 @app.route('/api/doctor/scan', methods=['GET'])
 def doctor_scan():
     try:

@@ -52,6 +52,7 @@ UNRECOGNIZED_FOLDER = os.path.join(BASE_DIR, "Facturas_No_Reconocidas")
 CSV_ARCA_FOLDER = os.path.join(BASE_DIR, "CSV ARCA")
 REGISTROS_FOLDER = os.path.join(BASE_DIR, "registros")
 REMITOS_FOLDER = os.path.join(BASE_DIR, "Remitos")
+ARCA_LOG_FILE = os.path.join(REGISTROS_FOLDER, "arca_error_log.txt")
 
 # Asegurar que las carpetas existan (se crean automáticamente si no)
 os.makedirs(INPUT_FOLDER, exist_ok=True)
