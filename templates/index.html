@@ -17,8 +17,7 @@
                 <i class="fa-solid fa-file-invoice-dollar logo-icon"></i>
                 <h2>PDFWatcher</h2>
             </div>
-            
-            <ul class="nav-links">
+                        <ul class="nav-links">
                 <li class="active" data-tab="dashboard">
                     <i class="fa-solid fa-chart-pie"></i>
                     <span>Panel General</span>
@@ -26,6 +25,10 @@
                 <li data-tab="processed">
                     <i class="fa-solid fa-file-circle-check"></i>
                     <span>Facturas Procesadas</span>
+                </li>
+                <li data-tab="remitos">
+                    <i class="fa-solid fa-receipt"></i>
+                    <span>Remitos y No Fiscales</span>
                 </li>
                 <li data-tab="suppliers">
                     <i class="fa-solid fa-users"></i>
@@ -61,7 +64,7 @@
             <section id="tab-dashboard" class="tab-pane active fade-in">
                 <header class="section-header">
                     <h1>Panel General</h1>
-                    <p>Monitoreo y estadísticas del procesamiento de facturas.</p>
+                    <p>Monitoreo y estadísticas del procesamiento de facturas y remitos.</p>
                 </header>
 
                 <!-- Watcher Controls -->
@@ -87,8 +90,6 @@
                     </div>
                 </div>
                 
-
-
                 <!-- Progress Bar (Hidden by default) -->
                 <div id="progress-container" class="glass-card" style="display: none; margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -125,7 +126,7 @@
                         </div>
                     </div>
                     
-                    <div class="glass-card stat-card">
+                    <div class="glass-card stat-card" id="card-processed" style="cursor: pointer;" title="Ver Facturas Procesadas">
                         <div class="stat-icon processed-icon">
                             <i class="fa-solid fa-check-circle"></i>
                         </div>
@@ -134,8 +135,18 @@
                             <p class="stat-number" id="stat-processed">0</p>
                         </div>
                     </div>
+
+                    <div class="glass-card stat-card" id="card-remitos" style="cursor: pointer;" title="Ver Remitos y Documentos No Fiscales">
+                        <div class="stat-icon" style="background: rgba(155, 89, 182, 0.2); color: #9b59b6;">
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                        <div class="stat-details">
+                            <h3>Remitos / No Fiscales</h3>
+                            <p class="stat-number" id="stat-remitos">0</p>
+                        </div>
+                    </div>
                     
-                    <div class="glass-card stat-card">
+                    <div class="glass-card stat-card" id="card-unrecognized" style="cursor: pointer;" title="Ver Facturas No Reconocidas y Diagnóstico">
                         <div class="stat-icon unrecognized-icon">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                         </div>
@@ -233,6 +244,83 @@
                     <div id="no-processed-msg" class="empty-state" style="display: none;">
                         <i class="fa-regular fa-folder-open"></i>
                         <p>No se encontraron facturas procesadas.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Remitos y Documentos No Fiscales -->
+            <section id="tab-remitos" class="tab-pane fade-in" style="display: none;">
+                <header class="section-header">
+                    <h1>Remitos y Documentos No Fiscales</h1>
+                    <p>Comprobantes comerciales, presupuestos, remitos, notas de pedido y documentos de uso interno.</p>
+                </header>
+
+                <div class="glass-card full-height-card">
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="search-remitos" placeholder="Filtrar por nombre de remito o archivo...">
+                        </div>
+                        <div class="toolbar-actions">
+                            <span id="remitos-count" class="badge">0 remitos</span>
+                            <button id="btn-refresh-remitos" class="btn btn-secondary btn-icon">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <div id="remitos-tree-container" class="tree-container">
+                            <!-- Dynamic tree content -->
+                        </div>
+                    </div>
+                    <div id="no-remitos-msg" class="empty-state" style="display: none;">
+                        <i class="fa-regular fa-folder-open"></i>
+                        <p>No se encontraron remitos o documentos no fiscales procesados.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Unrecognized Invoices -->
+            <section id="tab-unrecognized" class="tab-pane fade-in" style="display: none;">
+                <header class="section-header">
+                    <h1>Facturas No Reconocidas</h1>
+                    <p>Archivos que no pudieron ser clasificados automáticamente y sus diagnósticos de error.</p>
+                </header>
+
+                <div class="glass-card full-height-card">
+                    <div class="table-toolbar">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search"></i>
+                            <input type="text" id="search-unrecognized" placeholder="Filtrar por nombre de archivo o tipo de error...">
+                        </div>
+                        <div class="toolbar-actions">
+                            <span id="unrecognized-count" class="badge">0 archivos</span>
+                            <button id="btn-refresh-unrecognized" class="btn btn-secondary btn-icon">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Tipo de Error</th>
+                                    <th>Fecha de Intento</th>
+                                    <th>Diagnóstico / Explicación del Error</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unrecognized-table-body">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="no-unrecognized-msg" class="empty-state" style="display: none;">
+                        <i class="fa-solid fa-circle-check" style="color: #2ecc71;"></i>
+                        <p>¡Excelente! No hay facturas sin reconocer actualmente.</p>
                     </div>
                 </div>
             </section>

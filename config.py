@@ -51,6 +51,7 @@ OUTPUT_FOLDER = os.path.join(BASE_DIR, "Facturas_Procesadas")
 UNRECOGNIZED_FOLDER = os.path.join(BASE_DIR, "Facturas_No_Reconocidas")
 CSV_ARCA_FOLDER = os.path.join(BASE_DIR, "CSV ARCA")
 REGISTROS_FOLDER = os.path.join(BASE_DIR, "registros")
+REMITOS_FOLDER = os.path.join(BASE_DIR, "Remitos")
 
 # Asegurar que las carpetas existan (se crean automáticamente si no)
 os.makedirs(INPUT_FOLDER, exist_ok=True)
@@ -58,6 +59,7 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(UNRECOGNIZED_FOLDER, exist_ok=True)
 os.makedirs(CSV_ARCA_FOLDER, exist_ok=True)
 os.makedirs(REGISTROS_FOLDER, exist_ok=True)
+os.makedirs(REMITOS_FOLDER, exist_ok=True)
 
 # Extensiones a monitorear
 ALLOWED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"]

@@ -54,6 +54,7 @@ mkdir "dist\PDFWatcher\Facturas_A_Procesar" 2>nul
 mkdir "dist\PDFWatcher\Facturas_Procesadas" 2>nul
 mkdir "dist\PDFWatcher\Facturas_No_Reconocidas" 2>nul
 mkdir "dist\PDFWatcher\CSV ARCA" 2>nul
+mkdir "dist\PDFWatcher\Remitos" 2>nul
 
 echo.
 echo ===================================================

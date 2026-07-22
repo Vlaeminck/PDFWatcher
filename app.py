@@ -53,13 +53,15 @@ def status():
     pending = count_files(config.INPUT_FOLDER)
     processed = count_files(config.OUTPUT_FOLDER)
     unrecognized = count_files(config.UNRECOGNIZED_FOLDER)
+    remitos = count_files(config.REMITOS_FOLDER)
     
     return jsonify({
         "watcher_running": watcher_manager.is_running,
         "stats": {
             "pending": pending,
             "processed": processed,
-            "unrecognized": unrecognized
+            "unrecognized": unrecognized,
+            "remitos": remitos
         }
     })
 
@@ -108,6 +110,108 @@ def processed_invoices():
                     "path": rel_path.replace('\\', '/')
                 })
     return jsonify(invoices)
+
+def parse_error_log():
+    log_path = os.path.join(config.REGISTROS_FOLDER, "errores_debug.txt")
+    error_map = {}
+    if not os.path.exists(log_path):
+        return error_map
+        
+    try:
+        with open(log_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            
+        blocks = content.split("=========================================")
+        for block in blocks:
+            lines = [l.strip() for l in block.strip().split('\n') if l.strip()]
+            if not lines:
+                continue
+            
+            timestamp = ""
+            filename = ""
+            error_type = ""
+            details = []
+            in_details = False
+            
+            for line in lines:
+                if line.startswith("Fecha/Hora:"):
+                    timestamp = line.replace("Fecha/Hora:", "").strip()
+                elif line.startswith("Archivo:"):
+                    filename = line.replace("Archivo:", "").strip()
+                elif line.startswith("Tipo de Error:"):
+                    error_type = line.replace("Tipo de Error:", "").strip()
+                elif line.startswith("Detalles:"):
+                    in_details = True
+                elif in_details:
+                    details.append(line)
+                    
+            if filename:
+                error_map[filename] = {
+                    "timestamp": timestamp,
+                    "error_type": error_type or "No reconocido",
+                    "details": "\n".join(details) if details else "Sin detalles adicionales."
+                }
+    except Exception as e:
+        print(f"Error parseando errores_debug.txt: {e}")
+        
+    return error_map
+
+@app.route('/api/unrecognized_invoices')
+def unrecognized_invoices():
+    error_map = parse_error_log()
+    invoices = []
+    if os.path.exists(config.UNRECOGNIZED_FOLDER):
+        for root, dirs, files in os.walk(config.UNRECOGNIZED_FOLDER):
+            for file in files:
+                if file == '.gitkeep':
+                    continue
+                rel_path = os.path.relpath(os.path.join(root, file), config.UNRECOGNIZED_FOLDER).replace('\\', '/')
+                err_info = error_map.get(file, {
+                    "timestamp": "-",
+                    "error_type": "No reconocido",
+                    "details": "El comprobante no pudo ser clasificado como factura fiscal ni remito."
+                })
+                invoices.append({
+                    "filename": file,
+                    "error_type": err_info["error_type"],
+                    "details": err_info["details"],
+                    "date": err_info["timestamp"],
+                    "path": rel_path
+                })
+    return jsonify(invoices)
+
+@app.route('/api/unrecognized_file/<path:filepath>')
+def serve_unrecognized_file(filepath):
+    return send_from_directory(config.UNRECOGNIZED_FOLDER, filepath)
+
+@app.route('/api/processed_remitos')
+def processed_remitos():
+    remitos = []
+    if os.path.exists(config.REMITOS_FOLDER):
+        for root, dirs, files in os.walk(config.REMITOS_FOLDER):
+            for file in files:
+                if file == '.gitkeep':
+                    continue
+                rel_path = os.path.relpath(os.path.join(root, file), config.REMITOS_FOLDER)
+                parts = rel_path.replace('\\', '/').split('/')
+                if len(parts) >= 3:
+                    year, month = parts[0], parts[1]
+                    filename = parts[-1]
+                else:
+                    year, month = "-", "-"
+                    filename = file
+                    
+                remitos.append({
+                    "filename": filename,
+                    "supplier": "Remito / Comprobante No Fiscal",
+                    "date": f"{month} {year}",
+                    "path": rel_path.replace('\\', '/')
+                })
+    return jsonify(remitos)
+
+@app.route('/api/remito_file/<path:filepath>')
+def serve_remito_file(filepath):
+    return send_from_directory(config.REMITOS_FOLDER, filepath)
 
 @app.route('/api/file/<path:filepath>')
 def serve_file(filepath):
@@ -306,7 +410,18 @@ def open_scanner():
         
         def run_scanner():
             try:
-                subprocess.run([naps2_path, '-o', output_path])
+                kwargs = {}
+                if getattr(subprocess, 'CREATE_NO_WINDOW', None) is not None:
+                    kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+                
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = 0
+                kwargs['startupinfo'] = startupinfo
+                
+                subprocess.run([naps2_path, '-o', output_path], **kwargs)
+            except Exception as e:
+                print(f"Error durante el escaneo con NAPS2: {e}", flush=True)
             finally:
                 scanning_lock.release()
                 

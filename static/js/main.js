@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (link.dataset.tab === 'suppliers') fetchSuppliers();
             if (link.dataset.tab === 'processed') fetchProcessedInvoices();
+            if (link.dataset.tab === 'remitos') fetchProcessedRemitos();
+            if (link.dataset.tab === 'unrecognized') fetchUnrecognizedInvoices();
         });
     });
 
@@ -152,6 +154,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let prevUnrecognizedCount = null;
 
+    const cardProcessed = document.getElementById('card-processed');
+    const cardRemitos = document.getElementById('card-remitos');
+    const cardUnrecognized = document.getElementById('card-unrecognized');
+
+    if (cardProcessed) {
+        cardProcessed.addEventListener('click', () => {
+            const target = document.querySelector('[data-tab="processed"]');
+            if (target) target.click();
+        });
+    }
+    if (cardRemitos) {
+        cardRemitos.addEventListener('click', () => {
+            const target = document.querySelector('[data-tab="remitos"]');
+            if (target) target.click();
+        });
+    }
+    if (cardUnrecognized) {
+        cardUnrecognized.addEventListener('click', () => {
+            const target = document.querySelector('[data-tab="unrecognized"]');
+            if (target) target.click();
+        });
+    }
+
     async function fetchStatus() {
         try {
             const res = await fetch('/api/status');
@@ -162,6 +187,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('stat-pending').textContent = data.stats.pending;
             document.getElementById('stat-processed').textContent = data.stats.processed;
             document.getElementById('stat-unrecognized').textContent = data.stats.unrecognized;
+            if (document.getElementById('stat-remitos')) {
+                document.getElementById('stat-remitos').textContent = data.stats.remitos || 0;
+            }
             
             if (prevUnrecognizedCount !== null && data.stats.unrecognized > prevUnrecognizedCount) {
                 showToast("¡Atención! Una factura no reconocida requiere revisión.", "warning");
@@ -473,17 +501,222 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast("Historial actualizado");
     });
 
+    // --- Remitos y Documentos No Fiscales ---
+    const remitosTreeContainer = document.getElementById('remitos-tree-container');
+    const remitosCount = document.getElementById('remitos-count');
+    const noRemitosMsg = document.getElementById('no-remitos-msg');
+    const searchRemitosInput = document.getElementById('search-remitos');
+    const btnRefreshRemitos = document.getElementById('btn-refresh-remitos');
+    let rawRemitosList = [];
+
+    async function fetchProcessedRemitos() {
+        try {
+            const res = await fetch('/api/processed_remitos');
+            rawRemitosList = await res.json();
+            renderRemitosTree(rawRemitosList);
+        } catch (e) {
+            console.error("Error fetching processed remitos:", e);
+            showToast("Error al cargar remitos", "error");
+        }
+    }
+
+    function renderRemitosTree(list) {
+        if (!remitosTreeContainer) return;
+        remitosTreeContainer.innerHTML = '';
+        remitosCount.textContent = `${list.length} remitos`;
+
+        if (list.length === 0) {
+            noRemitosMsg.style.display = 'flex';
+            if (document.querySelector('#tab-remitos .table-container')) {
+                document.querySelector('#tab-remitos .table-container').style.display = 'none';
+            }
+            return;
+        }
+
+        noRemitosMsg.style.display = 'none';
+        if (document.querySelector('#tab-remitos .table-container')) {
+            document.querySelector('#tab-remitos .table-container').style.display = 'block';
+        }
+
+        const tree = {};
+        list.forEach(item => {
+            const parts = item.date.split(' ');
+            const month = parts[0] || 'N/A';
+            const year = parts[1] || 'N/A';
+
+            if (!tree[year]) tree[year] = {};
+            if (!tree[year][month]) tree[year][month] = [];
+            tree[year][month].push(item);
+        });
+
+        function buildFolder(name, contentHtml, isOpen = true) {
+            const folderDiv = document.createElement('div');
+            folderDiv.className = `tree-folder ${isOpen ? 'open' : ''}`;
+
+            const folderNameDiv = document.createElement('div');
+            folderNameDiv.className = 'tree-folder-name';
+            folderNameDiv.innerHTML = `<i class="fa-solid fa-folder${isOpen ? '-open' : ''}"></i> <strong>${name}</strong>`;
+
+            const folderContentDiv = document.createElement('div');
+            folderContentDiv.className = 'tree-folder-content';
+            folderContentDiv.appendChild(contentHtml);
+
+            folderNameDiv.addEventListener('click', () => {
+                const isOpenNow = folderDiv.classList.toggle('open');
+                folderNameDiv.querySelector('i').className = `fa-solid fa-folder${isOpenNow ? '-open' : ''}`;
+            });
+
+            folderDiv.appendChild(folderNameDiv);
+            folderDiv.appendChild(folderContentDiv);
+            return folderDiv;
+        }
+
+        const rootDiv = document.createElement('div');
+
+        Object.keys(tree).sort().reverse().forEach(year => {
+            const yearContent = document.createElement('div');
+            Object.keys(tree[year]).sort().forEach(month => {
+                const monthContent = document.createElement('div');
+                tree[year][month].forEach(item => {
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'tree-file';
+                    fileDiv.innerHTML = `<i class="fa-solid fa-receipt" style="color: #9b59b6;"></i> <span>${item.filename}</span>`;
+                    fileDiv.addEventListener('click', () => openModal(item, '/api/remito_file/'));
+                    monthContent.appendChild(fileDiv);
+                });
+                yearContent.appendChild(buildFolder(month, monthContent, true));
+            });
+            rootDiv.appendChild(buildFolder(year, yearContent, true));
+        });
+
+        remitosTreeContainer.appendChild(rootDiv);
+    }
+
+    if (searchRemitosInput) {
+        searchRemitosInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const filtered = rawRemitosList.filter(item => 
+                item.filename.toLowerCase().includes(query) ||
+                item.date.toLowerCase().includes(query)
+            );
+            renderRemitosTree(filtered);
+        });
+    }
+
+    if (btnRefreshRemitos) {
+        btnRefreshRemitos.addEventListener('click', () => {
+            if (searchRemitosInput) searchRemitosInput.value = '';
+            fetchProcessedRemitos();
+            showToast("Remitos actualizados");
+        });
+    }
+
+    // --- Facturas No Reconocidas con Diagnóstico ---
+    const unrecognizedTableBody = document.getElementById('unrecognized-table-body');
+    const unrecognizedCount = document.getElementById('unrecognized-count');
+    const noUnrecognizedMsg = document.getElementById('no-unrecognized-msg');
+    const searchUnrecognizedInput = document.getElementById('search-unrecognized');
+    const btnRefreshUnrecognized = document.getElementById('btn-refresh-unrecognized');
+    let rawUnrecognizedList = [];
+
+    async function fetchUnrecognizedInvoices() {
+        try {
+            const res = await fetch('/api/unrecognized_invoices');
+            rawUnrecognizedList = await res.json();
+            renderUnrecognizedTable(rawUnrecognizedList);
+        } catch (e) {
+            console.error("Error fetching unrecognized invoices:", e);
+            showToast("Error al cargar facturas no reconocidas", "error");
+        }
+    }
+
+    function renderUnrecognizedTable(list) {
+        if (!unrecognizedTableBody) return;
+        unrecognizedTableBody.innerHTML = '';
+        unrecognizedCount.textContent = `${list.length} archivos`;
+
+        if (list.length === 0) {
+            noUnrecognizedMsg.style.display = 'flex';
+            if (document.querySelector('#tab-unrecognized .table-container')) {
+                document.querySelector('#tab-unrecognized .table-container').style.display = 'none';
+            }
+            return;
+        }
+
+        noUnrecognizedMsg.style.display = 'none';
+        if (document.querySelector('#tab-unrecognized .table-container')) {
+            document.querySelector('#tab-unrecognized .table-container').style.display = 'block';
+        }
+
+        list.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            const tdFile = document.createElement('td');
+            tdFile.innerHTML = `<i class="fa-solid fa-file-pdf" style="color: #e74c3c; margin-right: 8px;"></i><strong>${item.filename}</strong>`;
+
+            const tdErrorType = document.createElement('td');
+            tdErrorType.innerHTML = `<span class="badge" style="background: rgba(231,76,60,0.2); color: #e74c3c; border: 1px solid rgba(231,76,60,0.3);">${item.error_type}</span>`;
+
+            const tdDate = document.createElement('td');
+            tdDate.textContent = item.date || '-';
+
+            const tdDetails = document.createElement('td');
+            tdDetails.style.maxWidth = '380px';
+            tdDetails.style.fontSize = '0.85rem';
+            tdDetails.style.color = 'var(--text-secondary)';
+            tdDetails.style.whiteSpace = 'pre-line';
+            tdDetails.textContent = item.details;
+
+            const tdAction = document.createElement('td');
+            const btnPreview = document.createElement('button');
+            btnPreview.className = 'btn btn-secondary btn-icon';
+            btnPreview.innerHTML = '<i class="fa-solid fa-eye"></i>';
+            btnPreview.title = 'Previsualizar archivo';
+            btnPreview.addEventListener('click', () => {
+                openModal({ filename: item.filename, path: item.path, supplier: 'No Reconocida' }, '/api/unrecognized_file/');
+            });
+            tdAction.appendChild(btnPreview);
+
+            tr.appendChild(tdFile);
+            tr.appendChild(tdErrorType);
+            tr.appendChild(tdDate);
+            tr.appendChild(tdDetails);
+            tr.appendChild(tdAction);
+
+            unrecognizedTableBody.appendChild(tr);
+        });
+    }
+
+    if (searchUnrecognizedInput) {
+        searchUnrecognizedInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const filtered = rawUnrecognizedList.filter(item => 
+                item.filename.toLowerCase().includes(query) ||
+                item.error_type.toLowerCase().includes(query) ||
+                item.details.toLowerCase().includes(query)
+            );
+            renderUnrecognizedTable(filtered);
+        });
+    }
+
+    if (btnRefreshUnrecognized) {
+        btnRefreshUnrecognized.addEventListener('click', () => {
+            if (searchUnrecognizedInput) searchUnrecognizedInput.value = '';
+            fetchUnrecognizedInvoices();
+            showToast("No reconocidas actualizadas");
+        });
+    }
+
     // --- Modal Logic ---
     const modal = document.getElementById('file-modal');
     const modalTitle = document.getElementById('modal-title');
     const modalIframe = document.getElementById('modal-iframe');
     const closeModalBtn = document.querySelector('.close-modal');
 
-    function openModal(inv) {
-        modalTitle.textContent = `${inv.supplier} - ${inv.filename}`;
-        // Enforce proper encoding of the path
+    function openModal(inv, baseUrl = '/api/file/') {
+        modalTitle.textContent = inv.supplier ? `${inv.supplier} - ${inv.filename}` : inv.filename;
         const encodedPath = inv.path.split('/').map(encodeURIComponent).join('/');
-        modalIframe.src = `/api/file/${encodedPath}`;
+        modalIframe.src = `${baseUrl}${encodedPath}`;
         modal.style.display = 'flex';
         modal.classList.add('fade-in');
     }

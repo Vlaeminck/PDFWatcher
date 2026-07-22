@@ -93,6 +93,81 @@ def extract_text(file_path):
         return extract_text_via_ocr_image(file_path)
 
 # ---------------------------------------------------------------------------
+# Patrones y funciones para Documentos No Fiscales / Remitos / Presupuestos
+# ---------------------------------------------------------------------------
+
+NON_FISCAL_PATTERNS = [
+    # 1. Leyendas de Invalidez Fiscal (Alertas Rojas)
+    r'\bdocumento\s+no\s+v[aá]lido\s+como\s+factura\b',
+    r'\bcomprobante\s+no\s+v[aá]lido\s+como\s+factura\b',
+    r'\bno\s+v[aá]lido\s+como\s+factura\b',
+    r'\bno\s+v[aá]lido\s+como\s+comprobante\s+de\s+compra\b',
+    r'\bdocumento\s+no\s+fiscal\b',
+    r'\btik\s+no\s+fiscal\b',
+    r'\bticket\s+no\s+fiscal\b',
+    r'\bcomprobante\s+provisorio\b',
+    r'\brecibo\s+provisorio\b',
+    
+    # 2. Documentos Comerciales No Fiscales
+    r'\bpresupuesto\b',
+    r'\bcotizaci[oó]n\b',
+    r'\bnota\s+de\s+pedido\b',
+    r'\borden\s+de\s+compra\b',
+    r'\bfactura\s+proforma\b',
+    r'\bproforma\b',
+    r'\borden\s+de\s+trabajo\b',
+    r'\borden\s+de\s+servicio\b',
+    r'\bsolicitud\s+de\s+pedido\b',
+    
+    # 3. Documentos de Logística y Entrega
+    r'\bremito\b',
+    r'\bremitos\b',
+    r'\bremito\s+electr[oó]nico\b',
+    r'\bhoja\s+de\s+ruta\b',
+    r'\bgu[ií]a\s+de\s+transporte\b',
+    r'\bremisi[oó]n\b',
+    
+    # 4. Recibos y Comprobantes Provisorios
+    r'\bvale\s+de\s+caja\b',
+    r'\bvale\s+de\s+mercader[ií]a\b',
+    r'\bcomprobante\s+de\s+recepci[oó]n\b',
+    
+    # 5. Leyendas de Destino o Condición
+    r'\bsin\s+valor\s+comercial\b',
+    r'\buso\s+interno\b',
+    r'\bpara\s+uso\s+interno\b',
+    r'\bmuestra\s+sin\s+valor\b',
+]
+
+def is_non_fiscal_document(text):
+    if not text:
+        return False
+    text_lower = text.lower()
+    for pattern in NON_FISCAL_PATTERNS:
+        if re.search(pattern, text_lower):
+            return True
+    return False
+
+def move_to_remitos(file_path, new_filename):
+    from config import REMITOS_FOLDER
+    today = datetime.date.today()
+    year = str(today.year)
+    month_name = MONTHS_ES[today.month]
+
+    remito_dir = os.path.join(REMITOS_FOLDER, year, month_name)
+    ensure_dir(remito_dir)
+
+    unique_filename = generate_unique_filename(remito_dir, new_filename)
+    dest_path = os.path.join(remito_dir, unique_filename)
+
+    try:
+        shutil.move(file_path, dest_path)
+        print(f"  [REMITO] Documento no fiscal/remito movido a: {dest_path}", flush=True)
+        log_scan_time(file_path, dest_path, "Remito / Documento No Fiscal", unique_filename)
+    except Exception as e:
+        print(f"Error moviendo remito: {e}", flush=True)
+
+# ---------------------------------------------------------------------------
 # Motor de matching: CUIT primero, keywords como fallback
 # ---------------------------------------------------------------------------
 
@@ -355,6 +430,25 @@ def find_supplier(text):
 
     return None, None, None
 
+def validate_invoice_date(date_obj):
+    """
+    Valida que la fecha de emisión de una factura sea válida:
+    - No puede ser posterior a la fecha del día de hoy.
+    - No puede ser de un año futuro (mayor al año actual).
+    - No puede ser de un año lejano o irrazonable (menor a current_year - 5, p. ej. 2002).
+    Acepta facturas legítimas de los últimos años (current_year - 5 hasta la fecha actual).
+    """
+    if not date_obj:
+        return None
+    today = datetime.date.today()
+    current_year = today.year
+    min_year = current_year - 5
+    
+    if isinstance(date_obj, datetime.date):
+        if min_year <= date_obj.year <= current_year and date_obj <= today:
+            return date_obj
+    return None
+
 def parse_valid_date(day_str, month_str, year_str):
     try:
         day = int(day_str)
@@ -365,11 +459,9 @@ def parse_valid_date(day_str, month_str, year_str):
             # Asumir siglo 21 (20XX) para años de 2 dígitos
             year += 2000
             
-        if 2000 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
-            parsed_date = datetime.date(year, month, day)
-            if parsed_date > datetime.date.today():
-                return None
-            return parsed_date
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            candidate = datetime.date(year, month, day)
+            return validate_invoice_date(candidate)
     except Exception:
         pass
     return None
@@ -445,9 +537,19 @@ def process_invoice(file_path):
 
     text = extract_text(file_path)
 
+    if is_non_fiscal_document(text):
+        print("  [REMITO] Documento detectado como Remito / Comprobante No Fiscal.", flush=True)
+        move_to_remitos(file_path, os.path.basename(file_path))
+        return
+
     if not text.strip():
         print("No se encontró texto. Intentando rescate con IA (Gemini)...", flush=True)
         ai_data = extract_data_via_ai(file_path)
+        if ai_data and ai_data.get('es_documento_no_fiscal'):
+            print("  [REMITO] Documento clasificado por IA como Remito / Comprobante No Fiscal.", flush=True)
+            move_to_remitos(file_path, os.path.basename(file_path))
+            return
+
         if ai_data and ai_data.get('cuit') and ai_data.get('numero_factura'):
             cuit_cleaned = re.sub(r'\D', '', str(ai_data.get('cuit', '')))
             supplier_found = _CUIT_INDEX.get(cuit_cleaned)
@@ -461,14 +563,12 @@ def process_invoice(file_path):
             if ai_data.get('fecha_emision'):
                 try:
                     parsed_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
-                    if parsed_date <= datetime.date.today():
-                        invoice_date = parsed_date
+                    invoice_date = validate_invoice_date(parsed_date)
                 except Exception:
                     pass
                     
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
-            if ai_data.get('keywords_optimizadas'):
-                save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
+            save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data.get('keywords_optimizadas'))
             invoice_formatted = invoice_number.replace('-', ' - ')
             new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
             move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
@@ -508,8 +608,8 @@ def process_invoice(file_path):
         if match_method == "CAE" and csv_info and csv_info.get("date"):
             try:
                 parsed_date = datetime.datetime.strptime(csv_info["date"], "%Y-%m-%d").date()
-                if parsed_date <= datetime.date.today():
-                    invoice_date = parsed_date
+                invoice_date = validate_invoice_date(parsed_date)
+                if invoice_date:
                     print(f"  [OK] Fecha obtenida de ARCA CSV: {invoice_date}", flush=True)
             except Exception:
                 pass
@@ -532,8 +632,7 @@ def process_invoice(file_path):
                 invoice_number = ai_data['numero_factura']
                 print(f"  [OK] Numero rescatado por IA: {invoice_number}", flush=True)
                 log_system_error("IA_RESCATE_EXITOSO", f"Factura {invoice_number} de {supplier_found} sin número (Original: {file_path})")
-                if ai_data.get('keywords_optimizadas'):
-                    save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
+                save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data.get('keywords_optimizadas'))
                 invoice_formatted = invoice_number.replace('-', ' - ')
                 new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
                 move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
@@ -559,14 +658,12 @@ def process_invoice(file_path):
             if ai_data.get('fecha_emision'):
                 try:
                     parsed_date = datetime.datetime.strptime(ai_data['fecha_emision'], "%Y-%m-%d").date()
-                    if parsed_date <= datetime.date.today():
-                        invoice_date = parsed_date
+                    invoice_date = validate_invoice_date(parsed_date)
                 except Exception:
                     pass
             print(f"  [OK] Rescatado por IA: {supplier_found} - {invoice_number}", flush=True)
             log_system_error("IA_RESCATE_EXITOSO", f"Proveedor no reconocido originalmente -> Factura {invoice_number} de {supplier_found} (Original: {file_path})")
-            if ai_data.get('keywords_optimizadas'):
-                save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data['keywords_optimizadas'])
+            save_ai_supplier(supplier_found, ai_data.get('cuit'), ai_data.get('keywords_optimizadas'))
             invoice_formatted = invoice_number.replace('-', ' - ')
             new_filename = f"{invoice_formatted} (Rescatado IA){ext}"
             move_to_processed(file_path, supplier_found, new_filename, invoice_date, invoice_formatted)
@@ -842,19 +939,33 @@ def extract_data_via_ai(file_path):
         else:
             return None
             
-        prompt = """
-        Eres un asistente experto en analizar facturas de Argentina. La fecha actual es """ + datetime.date.today().strftime('%Y-%m-%d') + """.
+        today_obj = datetime.date.today()
+        today_str = today_obj.strftime('%Y-%m-%d')
+        current_year = today_obj.year
+        min_year = current_year - 5
+        
+        prompt = f"""
+        Eres un asistente experto en analizar documentos comerciales y facturas de Argentina. La fecha actual es {today_str} (Año actual: {current_year}).
         Extrae la siguiente información de la imagen y devuelve ÚNICAMENTE un objeto JSON válido con este formato exacto:
-        {
+        {{
+            "es_documento_no_fiscal": true/false (coloca true si el documento es un remito, presupuesto, cotización, nota de pedido, orden de compra/trabajo/servicio, proforma, uso interno, sin valor comercial, o incluye leyendas como 'documento no valido como factura'),
             "cuit": "el CUIT del emisor (11 digitos sin guiones)",
             "nombre_emisor": "el nombre o razón social del emisor",
             "numero_factura": "el número COMPLETO de la factura, incluyendo SIEMPRE el Punto de Venta (4 o 5 dígitos) y el Número de Comprobante (8 dígitos), unidos por un guion. Ejemplo: 00002-00001536",
             "fecha_emision": "la fecha de emisión en formato YYYY-MM-DD",
             "keywords_optimizadas": ["palabra1", "palabra2", "palabra3", "palabra4", "palabra5"]
-        }
+        }}
         Si no encuentras alguno de los datos, coloca null en su valor sin comillas.
-        Para la fecha de emisión: ten en cuenta que NUNCA puede ser mayor a la fecha actual. Si ves una fecha futura, asume un error de escaneo y usa la lógica para corregirlo (ej. si el OCR leyó un 8 en lugar de un 6), o simplemente extrae null.
-        Para keywords_optimizadas, extrae ENTRE 3 y 6 PALABRAS CLAVE que sean ÚNICAS y EXCLUSIVAS de este proveedor. Incluye nombres comerciales, siglas, partes del logotipo legibles, direcciones web, o números de fantasía que sirvan como "huella digital" textual para que un sistema OCR bruto lo reconozca a futuro. Evita palabras comunes ("factura", "SA", "SRL", "CUIT", "fecha", "total", "IVA").
+
+        REGLA DE FECHA DE EMISIÓN:
+        - La fecha de emisión NUNCA puede ser posterior a la fecha actual ({today_str}) ni pertenecer a un año futuro (mayor a {current_year}).
+        - Si en la imagen se observa un año irrazonable o lejano en el pasado (menor a {min_year}, por ejemplo años como 2002, 2005, etc.) o en el futuro (como 2028), evalúa si se trata de un error de lectura/OCR (ej. un 6 o 5 leído como 8 o 2) y extrae la fecha correcta correspondiente a la factura real. Si no es posible determinar una fecha válida, coloca null.
+        - Las facturas emitidas en los últimos años (desde {min_year} hasta {current_year}) son totalmente válidas.
+
+        KEYWORDS OPTIMIZADAS:
+        - Extrae ENTRE 3 y 6 PALABRAS CLAVE que sean ÚNICAS y EXCLUSIVAS de este proveedor emisor.
+        - Incluye nombres comerciales, siglas, marcas distintivas, la razón social sin sufijos genéricos, direcciones web o nombres de fantasía.
+        - Evita palabras genéricas ("factura", "SA", "SRL", "CUIT", "fecha", "total", "IVA", "original", "comprobante").
         NO devuelvas explicaciones, marcadores markdown (```json) ni texto adicional, SOLAMENTE el diccionario JSON en texto plano.
         """
         contents.append(prompt)
@@ -879,53 +990,79 @@ def save_ai_supplier(nombre, cuit, keywords):
     import os
     import json
     import re
-    from update_suppliers import format_cuit
+    from config import BASE_DIR, SUPPLIERS_FILE
+    from update_suppliers import clean_supplier_name, format_cuit, get_base_keywords
     
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    suppliers_file = os.path.join(base_dir, "suppliers.json")
-    
+    if not nombre or nombre == "Proveedor Rescatado":
+        return
+        
     try:
+        clean_name = clean_supplier_name(nombre)
         suppliers = {}
-        if os.path.exists(suppliers_file):
-            with open(suppliers_file, 'r', encoding='utf-8') as f:
+        if os.path.exists(SUPPLIERS_FILE):
+            with open(SUPPLIERS_FILE, 'r', encoding='utf-8') as f:
                 suppliers = json.load(f)
                 
-        final_keywords = []
-        if isinstance(keywords, list):
-            final_keywords.extend([str(k).lower() for k in keywords])
-            
-        if cuit:
-            cuit_digits = re.sub(r'\D', '', str(cuit))
-            if len(cuit_digits) == 11:
-                cuit_fmt = format_cuit(cuit_digits)
-                final_keywords.extend([cuit_digits, cuit_fmt])
-                
-        final_keywords.append(nombre.lower())
-        final_keywords = list(dict.fromkeys(final_keywords))
+        cuit_digits = re.sub(r'\D', '', str(cuit)) if cuit else ""
+        if len(cuit_digits) != 11:
+            cuit_digits = ""
+        cuit_fmt = format_cuit(cuit_digits) if cuit_digits else ""
         
-        if nombre not in suppliers:
-            suppliers[nombre] = {
+        target_key = clean_name
+        # Buscar si ya existe en suppliers.json por nombre limpio (case-insensitive) o por CUIT
+        for s_name, s_data in suppliers.items():
+            if s_name.lower().strip() == clean_name.lower().strip():
+                target_key = s_name
+                break
+            if cuit_digits:
+                for kw in s_data.get("keywords", []):
+                    kw_digits = re.sub(r'\D', '', str(kw))
+                    if len(kw_digits) == 11 and kw_digits == cuit_digits:
+                        target_key = s_name
+                        break
+                if target_key != clean_name:
+                    break
+                    
+        final_keywords = get_base_keywords(target_key)
+        final_keywords.extend(get_base_keywords(clean_name))
+        
+        if cuit_digits:
+            final_keywords.extend([cuit_digits, cuit_fmt])
+            
+        if isinstance(keywords, list):
+            for k in keywords:
+                if k and isinstance(k, str):
+                    k_clean = k.lower().strip()
+                    if k_clean and len(k_clean) > 2:
+                        final_keywords.append(k_clean)
+                        
+        # Normalizar y deduplicar keywords
+        final_keywords = list(dict.fromkeys([k.lower().strip() for k in final_keywords if k]))
+        
+        if target_key not in suppliers:
+            suppliers[target_key] = {
                 "keywords": final_keywords,
                 "invoice_regex": r"(\d{4,5}\s*-\s*\d{8})"
             }
             action_msg = "guardado"
         else:
-            existing_kws = suppliers[nombre].get("keywords", [])
+            existing_kws = suppliers[target_key].get("keywords", [])
             for k in final_keywords:
                 if k not in existing_kws:
                     existing_kws.append(k)
-            suppliers[nombre]["keywords"] = existing_kws
+            suppliers[target_key]["keywords"] = existing_kws
             action_msg = "actualizado"
             
-        with open(suppliers_file, 'w', encoding='utf-8') as f:
+        # Guardar en SUPPLIERS_FILE (relativo a BASE_DIR del ejecutable .exe)
+        with open(SUPPLIERS_FILE, 'w', encoding='utf-8') as f:
             json.dump(suppliers, f, indent=4, ensure_ascii=False)
-        print(f"  [IA] Proveedor '{nombre}' {action_msg} en suppliers.json con keywords optimizadas para futuros escaneos.", flush=True)
+            
+        print(f"  [IA] Proveedor '{target_key}' {action_msg} en suppliers.json con huella digital optimizada para futuros escaneos OCR.", flush=True)
         
         from config import SUPPLIERS
-        SUPPLIERS[nombre] = suppliers[nombre]
+        SUPPLIERS[target_key] = suppliers[target_key]
         
-        global _CUIT_INDEX
-        _CUIT_INDEX = build_cuit_to_supplier_map()
+        reload_config()
     except Exception as e:
         print(f"Error guardando proveedor de IA: {e}", flush=True)
 
