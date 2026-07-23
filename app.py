@@ -24,6 +24,11 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 # 16 MB max
 # Control de ciclo de vida (Auto-Apagado)
 last_ping_time = time.time()
 
+@app.before_request
+def update_last_ping():
+    global last_ping_time
+    last_ping_time = time.time()
+
 @app.route('/api/ping', methods=['POST'])
 def ping():
     global last_ping_time
@@ -221,68 +226,102 @@ import zipfile
 
 @app.route('/api/upload_csv', methods=['POST'])
 def upload_csv():
-    if 'file' not in request.files:
-        return jsonify({"success": False, "message": "No se envió ningún archivo"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"success": False, "message": "Ningún archivo seleccionado"}), 400
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "message": "No se envió ningún archivo"}), 400
+        file = request.files['file']
+        if not file or file.filename == '':
+            return jsonify({"success": False, "message": "Ningún archivo seleccionado"}), 400
+            
+        raw_name = file.filename
+        ext = os.path.splitext(raw_name)[1].lower()
         
-    if file and (file.filename.lower().endswith('.csv') or file.filename.lower().endswith('.zip')):
-        filename = secure_filename(file.filename)
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        
-        if filename.lower().endswith('.zip'):
+        if ext in ['.csv', '.zip']:
+            safe_name = secure_filename(raw_name)
+            name_part, ext_part = os.path.splitext(safe_name)
+            timestamp = time.strftime('%Y%m%d_%H%M%S')
+            
+            if not name_part or len(name_part) < 2:
+                final_name = f"upload_{timestamp}{ext_part}"
+            else:
+                final_name = f"{name_part}_{timestamp}{ext_part}"
+                
+            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], final_name)
+            
             try:
-                with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                    for zip_info in zip_ref.infolist():
-                        if zip_info.filename.lower().endswith('.csv'):
-                            zip_info.filename = os.path.basename(zip_info.filename)
-                            zip_ref.extract(zip_info, app.config['UPLOAD_FOLDER'])
-                os.remove(file_path)
-            except Exception as e:
-                return jsonify({"success": False, "message": f"Error extrayendo ZIP: {e}"}), 500
+                file.save(file_path)
+            except PermissionError:
+                import uuid
+                fallback_name = f"upload_{timestamp}_{uuid.uuid4().hex[:6]}{ext_part}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], fallback_name)
+                file.save(file_path)
+            
+            if ext == '.zip':
+                try:
+                    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                        for zip_info in zip_ref.infolist():
+                            if zip_info.filename.lower().endswith('.csv'):
+                                zip_info.filename = os.path.basename(zip_info.filename)
+                                zip_ref.extract(zip_info, app.config['UPLOAD_FOLDER'])
+                    os.remove(file_path)
+                except Exception as e:
+                    return jsonify({"success": False, "message": f"Error extrayendo ZIP: {e}"}), 500
 
-        # Trigger update
-        result = update_config_suppliers()
-        
-        # Reload processor indices and config so it recognizes new suppliers without restarting
-        import processor
-        processor.reload_config()
-        
-        if not result:
-            result = {"success": True, "message": "Proceso finalizado correctamente."}
-        
-        return jsonify(result)
-        
-    return jsonify({"success": False, "message": "Tipo de archivo inválido. Solo se admiten archivos CSV o ZIP."}), 400
+            # Trigger update
+            from update_suppliers import update_config_suppliers
+            result = update_config_suppliers()
+            
+            # Reload processor indices and config so it recognizes new suppliers without restarting
+            import processor
+            processor.reload_config()
+            
+            if not result:
+                result = {"success": True, "message": "Proceso finalizado correctamente."}
+            elif isinstance(result, dict) and "success" not in result:
+                result["success"] = True
+            
+            return jsonify(result)
+            
+        return jsonify({"success": False, "message": "Tipo de archivo inválido. Solo se admiten archivos CSV o ZIP."}), 400
+    except Exception as e:
+        print(f"Error en /api/upload_csv: {e}", flush=True)
+        return jsonify({"success": False, "message": f"Error procesando archivo CSV: {str(e)}"}), 500
 
 @app.route('/api/upload_invoice', methods=['POST'])
 def upload_invoice():
-    if 'file' not in request.files:
-        return jsonify({"success": False, "message": "No se envió ningún archivo"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"success": False, "message": "Ningún archivo seleccionado"}), 400
-        
-    valid_exts = tuple(config.ALLOWED_EXTENSIONS)
-    if file and file.filename.lower().endswith(valid_exts):
-        filename = secure_filename(file.filename)
-        # Añadir timestamp para evitar sobreescribir archivos con el mismo nombre
-        timestamp = time.strftime('%Y%m%d_%H%M%S')
-        name, ext = os.path.splitext(filename)
-        new_filename = f"{name}_{timestamp}{ext}"
-        
-        file_path = os.path.join(config.INPUT_FOLDER, new_filename)
-        file.save(file_path)
-        
-        # Iniciar el vigía automáticamente
-        watcher_manager.start()
-        
-        return jsonify({"success": True, "message": "Factura cargada exitosamente"})
-        
-    return jsonify({"success": False, "message": "Tipo de archivo no permitido. Sube un PDF o Imagen."}), 400
+    try:
+        if 'file' not in request.files:
+            return jsonify({"success": False, "message": "No se envió ningún archivo"}), 400
+        file = request.files['file']
+        if not file or file.filename == '':
+            return jsonify({"success": False, "message": "Ningún archivo seleccionado"}), 400
+            
+        valid_exts = tuple(config.ALLOWED_EXTENSIONS)
+        if file and file.filename.lower().endswith(valid_exts):
+            raw_name = file.filename
+            safe_name = secure_filename(raw_name)
+            name, ext = os.path.splitext(raw_name)
+            timestamp = time.strftime('%Y%m%d_%H%M%S')
+            
+            if not safe_name or len(safe_name) < 4:
+                filename = f"factura_{timestamp}{ext.lower()}"
+            else:
+                s_name, s_ext = os.path.splitext(safe_name)
+                filename = f"{s_name}_{timestamp}{s_ext}"
+            
+            file_path = os.path.join(config.INPUT_FOLDER, filename)
+            file.save(file_path)
+            
+            # Iniciar el vigía automáticamente
+            watcher_manager.start()
+            
+            return jsonify({"success": True, "message": "Factura cargada exitosamente"})
+            
+        return jsonify({"success": False, "message": "Tipo de archivo no permitido. Sube un PDF o Imagen."}), 400
+    except Exception as e:
+        print(f"Error en /api/upload_invoice: {e}", flush=True)
+        return jsonify({"success": False, "message": f"Error al subir factura: {str(e)}"}), 500
 
 @app.route('/api/license/status')
 def license_status():
@@ -541,16 +580,26 @@ if __name__ == '__main__':
 
     def check_timeout():
         global last_ping_time
-        # Esperar 10 segundos inicialmente para dar tiempo a que abra el navegador
-        time.sleep(10)
+        time.sleep(15)
         while True:
             time.sleep(3)
-            # Si pasan más de 15 segundos sin ping, significa que se cerró la pestaña web
-            if time.time() - last_ping_time > 15:
-                print("No se detectó actividad web. Apagando servidor...")
+            # Evitar apagar si hay tareas activas en segundo plano
+            bot_running = False
+            try:
+                import arca_bot
+                bot_running = arca_bot.get_bot_status().get("running", False)
+            except Exception:
+                pass
+                
+            if bot_running or watcher_manager.is_processing_batch:
+                last_ping_time = time.time()
+                
+            # Si pasan más de 25 segundos sin recibir pings ni peticiones, se cerró la pestaña web
+            if time.time() - last_ping_time > 25:
+                print("No se detectó actividad web. Apagando servidor...", flush=True)
                 try:
                     watcher_manager.stop()
-                except:
+                except Exception:
                     pass
                 os._exit(0)
                 
@@ -561,8 +610,6 @@ if __name__ == '__main__':
     def open_browser():
         webbrowser.open_new('http://127.0.0.1:5000/')
 
-    # Abre el navegador automáticamente tras 1 segundo
     Timer(1, open_browser).start()
 
-    # use_reloader=False prevents watchdog observer from starting twice if __name__ == '__main__':
-    app.run(debug=True, port=5000, use_reloader=False)
+    app.run(debug=False, port=5000, use_reloader=False, threaded=True)

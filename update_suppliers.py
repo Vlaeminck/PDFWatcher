@@ -102,9 +102,9 @@ def read_csv_safe(file_path):
             with open(file_path, mode='r', encoding=encoding) as f:
                 content = f.read()
             return content, encoding
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, PermissionError, OSError):
             continue
-    raise ValueError(f"No se pudo decodificar el archivo {file_path} con ninguna de las codificaciones comunes.")
+    raise ValueError(f"No se pudo acceder o decodificar el archivo {file_path}.")
 
 def extract_suppliers_from_csv_folder(csv_folder):
     if not os.path.exists(csv_folder):

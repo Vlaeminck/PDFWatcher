@@ -784,18 +784,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 body: formData
             });
-            const data = await response.json();
             
-            if (data.success) {
-                showToast(data.message, 'success');
-                // Refresh data if needed
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                throw new Error(`Respuesta no válida del servidor (${response.status})`);
+            }
+            
+            if (response.ok && data.success) {
+                showToast(data.message || "Archivo procesado exitosamente", 'success');
                 fetchSuppliers();
             } else {
-                showToast(data.message || "Error al procesar el archivo", 'error');
+                showToast(data.message || `Error al procesar el archivo (${response.status})`, 'error');
             }
         } catch (error) {
             console.error("Error upload:", error);
-            showToast("Error de red al subir el archivo", 'error');
+            showToast(error.message || "Error al subir el archivo", 'error');
         } finally {
             // Reset UI
             setTimeout(() => {

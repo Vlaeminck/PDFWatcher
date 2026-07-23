@@ -114,30 +114,57 @@ def find_and_click_buscar(driver):
     """Encuentra y hace clic de forma exhaustiva en el botón BUSCAR del formulario de ARCA."""
     from selenium.webdriver.common.by import By
     
-    # 1. Buscar por XPATH coincidiendo con texto o valor 'BUSCAR'
-    candidates = driver.find_elements(By.XPATH, "//*[self::button or self::input][contains(translate(text(), 'buscar', 'BUSCAR'), 'BUSCAR') or contains(translate(@value, 'buscar', 'BUSCAR'), 'BUSCAR')] | //button[contains(@class, 'btn')]")
+    # 1. Búsqueda por IDs conocidos (incluyendo #buscarComprobantes)
+    for b_id in ["buscarComprobantes", "btnBuscar", "buscar", "btn-buscar", "btnConsultar"]:
+        try:
+            elems = driver.find_elements(By.ID, b_id)
+            for el in elems:
+                if el.is_displayed():
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+                    time.sleep(0.5)
+                    try:
+                        el.click()
+                    except Exception:
+                        driver.execute_script("arguments[0].click();", el)
+                    log_arca_event("INFO", f"¡Botón BUSCAR localizado y presionado por ID #{b_id}!")
+                    return True
+        except Exception:
+            pass
+
+    # 2. Buscar por XPATH coincidiendo con texto o valor 'BUSCAR'
+    candidates = driver.find_elements(By.XPATH, "//*[self::button or self::input][contains(translate(text(), 'buscar', 'BUSCAR'), 'BUSCAR') or contains(translate(@value, 'buscar', 'BUSCAR'), 'BUSCAR')] | //button[contains(@class, 'btn')] | //button[@id='buscarComprobantes']")
     for el in candidates:
         try:
-            txt = (el.text or el.get_attribute("value") or "").strip().upper()
-            if "BUSCAR" in txt or "CONSULTAR" in txt:
-                driver.execute_script("arguments[0].scrollIntoView(true);", el)
+            if not el.is_displayed():
+                continue
+            txt = (el.text or el.get_attribute("value") or el.get_attribute("id") or "").strip().upper()
+            if "BUSCAR" in txt or "CONSULTAR" in txt or el.get_attribute("id") == "buscarComprobantes":
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
                 time.sleep(0.5)
-                driver.execute_script("arguments[0].click();", el)
-                log_arca_event("INFO", f"¡Botón BUSCAR localizado y presionado! ({el.tag_name}, texto='{txt}')")
+                try:
+                    el.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", el)
+                log_arca_event("INFO", f"¡Botón BUSCAR localizado y presionado! ({el.tag_name}, texto/id='{txt}')")
                 return True
         except Exception:
             pass
             
-    # 2. Búsqueda por botones primarios o submits
-    btns = driver.find_elements(By.CSS_SELECTOR, "button.btn-primary, button[type='submit'], input[type='submit'], input[type='button'], #btnBuscar, button")
+    # 3. Búsqueda por botones primarios o submits
+    btns = driver.find_elements(By.CSS_SELECTOR, "#buscarComprobantes, button.btn-primary, button[type='submit'], input[type='submit'], input[type='button'], #btnBuscar, button")
     for b in btns:
         try:
-            val = (b.text or b.get_attribute("value") or "").strip().upper()
-            if "BUSCAR" in val or "CONSULTAR" in val or b.get_attribute("id") == "btnBuscar":
-                driver.execute_script("arguments[0].scrollIntoView(true);", b)
+            if not b.is_displayed():
+                continue
+            val = (b.text or b.get_attribute("value") or b.get_attribute("id") or "").strip().upper()
+            if "BUSCAR" in val or "CONSULTAR" in val or b.get_attribute("id") in ["buscarComprobantes", "btnBuscar"]:
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", b)
                 time.sleep(0.5)
-                driver.execute_script("arguments[0].click();", b)
-                log_arca_event("INFO", f"¡Botón BUSCAR localizado vía selector genérico! ({b.tag_name}, texto='{val}')")
+                try:
+                    b.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", b)
+                log_arca_event("INFO", f"¡Botón BUSCAR localizado vía selector genérico! ({b.tag_name}, texto/id='{val}')")
                 return True
         except Exception:
             pass
@@ -148,14 +175,19 @@ def find_and_click_csv(driver):
     """Encuentra y hace clic en el botón CSV de la tabla de resultados."""
     from selenium.webdriver.common.by import By
     
-    candidates = driver.find_elements(By.XPATH, "//button[contains(text(), 'CSV')] | //a[contains(text(), 'CSV')] | //*[contains(@class, 'buttons-csv')] | //*[contains(@title, 'CSV')] | //span[contains(text(), 'CSV')]")
+    candidates = driver.find_elements(By.XPATH, "//button[contains(text(), 'CSV')] | //a[contains(text(), 'CSV')] | //*[contains(@class, 'buttons-csv')] | //*[contains(@title, 'CSV')] | //span[contains(text(), 'CSV')] | //button[contains(@class, 'dt-button')]")
     for el in candidates:
         try:
-            txt = (el.text or el.get_attribute("title") or "").strip().upper()
+            if not el.is_displayed():
+                continue
+            txt = (el.text or el.get_attribute("title") or el.get_attribute("class") or "").strip().upper()
             if "CSV" in txt:
-                driver.execute_script("arguments[0].scrollIntoView(true);", el)
+                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
                 time.sleep(0.5)
-                driver.execute_script("arguments[0].click();", el)
+                try:
+                    el.click()
+                except Exception:
+                    driver.execute_script("arguments[0].click();", el)
                 log_arca_event("INFO", f"¡Botón CSV localizado y presionado! ({el.tag_name})")
                 return True
         except Exception:
@@ -165,9 +197,14 @@ def find_and_click_csv(driver):
     dt_btns = driver.find_elements(By.CSS_SELECTOR, "button.buttons-csv, a.dt-button, .dt-buttons button, .dt-buttons a")
     for b in dt_btns:
         try:
-            driver.execute_script("arguments[0].scrollIntoView(true);", b)
+            if not b.is_displayed():
+                continue
+            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", b)
             time.sleep(0.5)
-            driver.execute_script("arguments[0].click();", b)
+            try:
+                b.click()
+            except Exception:
+                driver.execute_script("arguments[0].click();", b)
             log_arca_event("INFO", f"¡Botón CSV presionado vía clase DataTables! ({b.tag_name})")
             return True
         except Exception:
@@ -261,7 +298,7 @@ def run_arca_bot_sync():
         
         btn_next = wait.until(EC.element_to_be_clickable((By.ID, "F1:btnSiguiente")))
         btn_next.click()
-        log_arca_event("INFO", "CUIT ingresado, avanzando a contraseña...")
+        log_arca_event("INFO", "CUIT ingresado, advancing a contraseña...")
 
         pass_input = wait.until(EC.visibility_of_element_located((By.ID, "F1:password")))
         pass_input.clear()
@@ -291,7 +328,7 @@ def run_arca_bot_sync():
 
             raise RuntimeError(f"ARCA rechazó el inicio de sesión: '{err_text}'. Por favor verifica que el CUIT ({cuit}) y la Clave Fiscal ingresados en Ajustes sean los correctos.")
 
-        # Paso 2: Navegar a Mis Comprobantes (Paso 1 del Paso a paso)
+        # Paso 2: Navegar a Mis Comprobantes
         update_status("NAVIGATING", "Abriendo servicio Mis Comprobantes...")
         
         try:
@@ -312,52 +349,142 @@ def run_arca_bot_sync():
             driver.switch_to.window(driver.window_handles[-1])
             log_arca_event("INFO", f"Cambio exitoso a la nueva pestaña abierta por Mis Comprobantes: {driver.current_url}")
 
-        # Paso 3: Selección de Representada / Persona (Paso 2 del Paso a paso)
+        # Paso 3: Selección de Representada / Persona
         rep_clean = "".join(filter(str.isdigit, str(target_rep)))
-        log_arca_event("INFO", f"Verificando pantalla de selección de representada/empresa ({target_rep})...")
+        log_arca_event("INFO", f"Verificando pantalla de selección de representada/empresa (Target: '{target_rep}', CUIT: '{rep_clean}')...")
 
         time.sleep(3)
         page_src = driver.page_source.lower()
         if "elegí una persona" in page_src or "representar a" in page_src or len(driver.find_elements(By.XPATH, "//*[contains(text(), 'Elegí una persona') or contains(text(), 'REPRESENTAR A')]")) > 0:
             log_arca_event("INFO", "Pantalla 'Elegí una persona para ingresar' detectada.")
             
-            selected = False
+            rep_formatted = f"{rep_clean[:2]}-{rep_clean[2:10]}-{rep_clean[10]}" if len(rep_clean) == 11 else rep_clean
+            
+            search_terms = []
+            if rep_formatted:
+                search_terms.append(rep_formatted)
             if rep_clean:
-                rep_formatted = f"{rep_clean[:2]}-{rep_clean[2:10]}-{rep_clean[10]}" if len(rep_clean) == 11 else rep_clean
-                matching_btns = driver.find_elements(By.XPATH, f"//*[contains(text(), '{rep_clean}') or contains(text(), '{rep_formatted}') or contains(text(), 'GASTRO MARKET')]/ancestor::div[contains(@class, 'card') or contains(@class, 'persona') or contains(@class, 'item') or @onclick] | //*[contains(text(), '{rep_clean}') or contains(text(), '{rep_formatted}') or contains(text(), 'GASTRO MARKET')]")
-                if matching_btns:
-                    driver.execute_script("arguments[0].click();", matching_btns[0])
-                    selected = True
-                    log_arca_event("INFO", f"Seleccionada empresa representada por CUIT/Nombre: {target_rep}")
-            
-            if not selected:
-                btns = driver.find_elements(By.CSS_SELECTOR, ".btn-empresa, .persona-item, div.card, button[type='submit'], input[type='button'], a.list-group-item")
-                if btns:
-                    driver.execute_script("arguments[0].click();", btns[0])
-                    log_arca_event("INFO", "Seleccionada primera opción disponible en la lista de representadas.")
-            
-            time.sleep(4)
+                search_terms.append(rep_clean)
+            if target_rep:
+                clean_name = str(target_rep).replace("S.R.L.", "").replace("SRL", "").replace("S.A.", "").replace("SA", "").strip()
+                if clean_name and clean_name not in search_terms:
+                    search_terms.append(clean_name)
+                if str(target_rep) not in search_terms:
+                    search_terms.append(str(target_rep))
+
+            selected_and_navigated = False
+
+            for term in search_terms:
+                if selected_and_navigated:
+                    break
+
+                log_arca_event("INFO", f"Buscando opción con término: '{term}'")
+
+                # XPath para encontrar el elemento o sus ancestros clickeables
+                xpath_query = (
+                    f"//*[contains(text(), '{term}')]/ancestor-or-self::*[self::div or self::button or self::input or self::a or self::li or @onclick or contains(@class, 'card') or contains(@class, 'persona') or contains(@class, 'item') or contains(@class, 'row')][1]"
+                    f" | //*[contains(text(), '{term}')]"
+                )
+                candidates = driver.find_elements(By.XPATH, xpath_query)
+
+                for cand in candidates:
+                    try:
+                        if not cand.is_displayed():
+                            continue
+                        
+                        log_arca_event("INFO", f"Intentando hacer clic en candidato para '{term}' ({cand.tag_name}, class='{cand.get_attribute('class')}')")
+                        
+                        # 1. Clic nativo con Selenium
+                        try:
+                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", cand)
+                            time.sleep(0.3)
+                            cand.click()
+                        except Exception:
+                            driver.execute_script("arguments[0].click();", cand)
+
+                        time.sleep(3)
+
+                        # Verificar si navegó fuera de la pantalla de selección
+                        if "elegí una persona" not in driver.page_source.lower() and "representar a" not in driver.page_source.lower():
+                            selected_and_navigated = True
+                            log_arca_event("INFO", f"¡Selección exitosa! Se navegó fuera de la pantalla de selección tras clic en '{term}'.")
+                            break
+                        else:
+                            # Reintentar clic en ancestros si el elemento interno no provocó la navegación
+                            parent = cand
+                            for level in range(4):
+                                try:
+                                    parent = parent.find_element(By.XPATH, "..")
+                                    if parent:
+                                        log_arca_event("INFO", f"Reintentando clic en ancestro nivel {level+1} ({parent.tag_name})...")
+                                        try:
+                                            parent.click()
+                                        except Exception:
+                                            driver.execute_script("arguments[0].click();", parent)
+                                        time.sleep(3)
+                                        if "elegí una persona" not in driver.page_source.lower() and "representar a" not in driver.page_source.lower():
+                                            selected_and_navigated = True
+                                            log_arca_event("INFO", f"¡Selección exitosa tras clic en ancestro nivel {level+1}!")
+                                            break
+                                except Exception:
+                                    break
+                            if selected_and_navigated:
+                                break
+                    except Exception as e_click:
+                        log_arca_event("WARNING", f"Error durante intento de clic en candidato: {e_click}")
+
+            if not selected_and_navigated:
+                log_arca_event("WARNING", "No se logró avanzar con términos específicos. Probando opciones genéricas en la pantalla...")
+                generic_btns = driver.find_elements(By.CSS_SELECTOR, ".btn-empresa, .persona-item, div.card, button[type='submit'], input[type='button'], a.list-group-item, div[onclick]")
+                for gb in generic_btns:
+                    try:
+                        if gb.is_displayed():
+                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", gb)
+                            time.sleep(0.3)
+                            try:
+                                gb.click()
+                            except Exception:
+                                driver.execute_script("arguments[0].click();", gb)
+                            time.sleep(3)
+                            if "elegí una persona" not in driver.page_source.lower():
+                                selected_and_navigated = True
+                                log_arca_event("INFO", "¡Selección exitosa mediante opción genérica!")
+                                break
+                    except Exception:
+                        pass
+
+            if not selected_and_navigated:
+                raise RuntimeError(f"No se pudo seleccionar la empresa/representada '{target_rep}' en la pantalla 'Elegí una persona para ingresar'.")
 
         # Paso 4: Click en tarjeta 'Recibidos' (Paso 3 del Paso a paso)
         update_status("SELECTING_SECTION", "Ingresando a Comprobantes Recibidos...")
         time.sleep(2)
         
         clicked_recibidos = False
-        try:
-            rec_elems = driver.find_elements(By.XPATH, "//*[contains(text(), 'Recibidos')] | //a[contains(@href, 'recibidos')]")
-            for el in rec_elems:
+        rec_candidates = driver.find_elements(By.XPATH, "//*[contains(text(), 'Recibidos')] | //a[contains(@href, 'recibidos')] | //*[contains(@class, 'card') or contains(@class, 'box') or self::a or self::button][.//text()[contains(translate(., 'recibidos', 'RECIBIDOS'), 'RECIBIDOS')]]")
+        for el in rec_candidates:
+            try:
                 if el.is_displayed():
-                    driver.execute_script("arguments[0].click();", el)
-                    clicked_recibidos = True
-                    log_arca_event("INFO", f"Click ejecutado en elemento 'Recibidos' ({el.tag_name}).")
-                    break
-        except Exception as e_rec:
-            log_arca_event("WARNING", f"No se pudo hacer clic en Recibidos: {e_rec}")
+                    driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+                    time.sleep(0.3)
+                    try:
+                        el.click()
+                    except Exception:
+                        driver.execute_script("arguments[0].click();", el)
+                    
+                    time.sleep(3)
+                    if "recibidos" in driver.current_url.lower() or len(driver.find_elements(By.CSS_SELECTOR, "#buscarComprobantes, input.daterange, #fDesde, #fHasta")) > 0 or "comprobantes recibidos" in driver.page_source.lower():
+                        clicked_recibidos = True
+                        log_arca_event("INFO", f"Se ingresó correctamente a la sección 'Comprobantes Recibidos'. (URL: {driver.current_url})")
+                        break
+            except Exception as e_rec:
+                log_arca_event("WARNING", f"Intento de clic en Recibidos falló: {e_rec}")
 
-        time.sleep(4)
-        log_arca_event("INFO", f"URL actual en sección Comprobantes Recibidos: {driver.current_url}")
+        if not clicked_recibidos:
+            if len(driver.find_elements(By.CSS_SELECTOR, "#buscarComprobantes, input.daterange, input[name*='fecha'], #fechaComprobante")) == 0:
+                raise RuntimeError("No se pudo ingresar a la sección 'Comprobantes Recibidos'.")
 
-        # Paso 5: Ajustar periodo de fechas (Paso 4 y 5 del Paso a paso)
+        # Paso 5: Ajustar periodo de fechas
         today = datetime.date.today()
         date_start_str = today.replace(day=1).strftime("%d/%m/%Y")
         date_end_str = today.strftime("%d/%m/%Y")
@@ -365,19 +492,32 @@ def run_arca_bot_sync():
 
         update_status("SETTING_DATES", f"Configurando fecha de comprobante: {date_range_val}...")
 
+        date_range_set = False
         try:
-            date_elems = driver.find_elements(By.CSS_SELECTOR, "input.daterange, input[name*='fecha'], input[id*='fecha'], input[placeholder*='Fecha'], input[type='text']")
+            date_elems = driver.find_elements(By.CSS_SELECTOR, "#fechaComprobante, #fechaEmision, input.daterange, input[name*='fecha'], input[id*='fecha'], input[placeholder*='Fecha']")
             for de in date_elems:
                 if de.is_displayed():
                     driver.execute_script("arguments[0].value = ''; arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('input')); arguments[0].dispatchEvent(new Event('change'));", de, date_range_val)
+                    date_range_set = True
                     log_arca_event("INFO", f"Fijada fecha del comprobante a '{date_range_val}'.")
                     break
         except Exception as e_dates:
             log_arca_event("WARNING", f"Advertencia al ajustar fecha del comprobante: {e_dates}")
 
+        if not date_range_set:
+            try:
+                f_desde = driver.find_elements(By.CSS_SELECTOR, "#fDesde, #fechaDesde, input[name='fechaDesde']")
+                f_hasta = driver.find_elements(By.CSS_SELECTOR, "#fHasta, #fechaHasta, input[name='fechaHasta']")
+                if f_desde and f_hasta:
+                    driver.execute_script("arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change'));", f_desde[0], date_start_str)
+                    driver.execute_script("arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change'));", f_hasta[0], date_end_str)
+                    log_arca_event("INFO", f"Fijadas fechas desde '{date_start_str}' hasta '{date_end_str}'.")
+            except Exception as e_dh:
+                log_arca_event("WARNING", f"Error ajustando fechas desde/hasta: {e_dh}")
+
         time.sleep(1.5)
 
-        # Paso 6: Click en botón 'BUSCAR' (Paso dificil 1)
+        # Paso 6: Click en botón 'BUSCAR'
         update_status("QUERYING", "Haciendo clic en el botón BUSCAR...")
         if not find_and_click_buscar(driver):
             log_arca_event("ERROR", "No se pudo localizar el botón BUSCAR en el formulario.")
@@ -411,11 +551,12 @@ def run_arca_bot_sync():
 
         # Paso 8: Procesar el CSV e integrar proveedores
         update_status("PROCESSING", "Procesando archivo CSV y actualizando lista de proveedores...")
+        import importlib
         from update_suppliers import update_config_suppliers
-        from processor import reload_suppliers
 
-        updated_count = update_config_suppliers()
-        reload_suppliers()
+        res_update = update_config_suppliers()
+        importlib.reload(config)
+        updated_count = res_update.get("added", 0) if isinstance(res_update, dict) else (res_update or 0)
 
         _bot_status["last_run"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         msg_success = f"¡Sincronización exitosa con ARCA! Archivo '{os.path.basename(downloaded_file)}' procesado ({updated_count} proveedores sincronizados)."

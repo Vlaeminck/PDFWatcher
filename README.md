@@ -1,82 +1,111 @@
-# PDFWatcher - Vigía y Organizador Inteligente de Facturas
+# 🧾 PDFWatcher - Vigía, Organizador e Integrador Inteligente de Facturas con ARCA
 
-Este proyecto es una herramienta automatizada para Windows que extrae la información relevante de facturas en formato PDF o imágenes (PNG, JPG, etc.), y las organiza automáticamente en carpetas jerárquicas estructuradas por **Año**, **Mes de emisión** y **Nombre de Proveedor**.
+**PDFWatcher** es una solución automatizada de escritorio y plataforma web para Windows que gestiona, clasifica y organiza facturas y comprobantes en formato PDF e imágenes (PNG, JPG, BMP, TIFF), sincronizándolos automáticamente con el portal de **ARCA (AFIP)**.
+
+Los archivos procesados se organizan de forma jerárquica y limpia en el sistema de archivos bajo la estructura:
+```
+/Facturas_Procesadas/YYYY/Mes/Nombre de Proveedor/
+```
+
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+### 🔹 Backend & Automatización (Python)
+* **Flask & WSGI Multihilo (`threaded=True`):** Servidor HTTP robusto con soporte para peticiones concurrentes y sistema de auto-apagado inteligente por inactividad.
+* **Selenium WebDriver (`Edge / Chrome Headless`):** Bot automatizado silencioso para ingresar al portal de ARCA/AFIP, autenticar con Clave Fiscal, seleccionar la persona representada, filtrar fechas y descargar comprobantes en CSV.
+* **Google Gemini AI API:** Inteligencia artificial para extracción asistida de facturas complejas, rotadas o con OCR deficiente.
+* **PyPDFium2 & pdfplumber:** Extracción nativa ultrarrápida de texto vectorial desde archivos PDF.
+* **Pytesseract (Tesseract OCR):** Reconocimiento óptico de caracteres para facturas escaneadas o en formato imagen.
+* **NAPS2 (Not Another PDF Scanner 2):** Integración por CLI para escaneo de documentos físicos directamente desde escáneres TWAIN/WIA.
+* **Firebase Licensing System:** Verificación y validación de licencias basadas en identificador único de hardware (HWID).
+
+### 🔹 Frontend (Interfaz de Usuario)
+* **HTML5 & Vanilla CSS3:** Diseño premium con estética *Glassmorphism*, modo oscuro (Dark Mode), paleta de colores armónica, transiciones suaves y micro-animaciones.
+* **Vanilla JavaScript ES6+:** Aplicación Single Page (SPA) interactiva basada en Fetch API, Drag & Drop API, actualización dinámica en tiempo real y vista en árbol (*Tree View*) para facturas procesadas y remitos.
+* **Driver.js:** Asistente y tutorial guiado interactivo paso a paso.
+* **FontAwesome 6:** Iconografía moderna para controles y estados visuales.
 
 ---
 
 ## 🚀 Características Principales
 
-* **Interfaz Gráfica Moderna (Dashboard Web):** Una interfaz de usuario atractiva que te permite monitorear estadísticas en tiempo real, visualizar facturas procesadas, y administrar proveedores directamente desde el navegador.
-* **Organización Inteligente por Fecha:** Extrae la fecha de emisión contenida en el comprobante (mediante texto, OCR o IA) para organizar los archivos en el directorio del mes correcto (`/Facturas_Procesadas/YYYY/Mes/Proveedor/`).
-* **Soporte para CSV y ZIP de ARCA:** Actualiza tu base de datos de proveedores automáticamente subiendo tu reporte de "Mis Comprobantes Recibidos" (en CSV o directamente el ZIP de ARCA) desde la pestaña de carga de la aplicación.
-* **Motor de Matching Multinivel:** 
-  1. **Tier 1 (CAE):** Cruza el CAE extraído con los datos de ARCA.
-  2. **Tier 2 (CUIT):** Identifica al emisor de manera inequívoca usando su CUIT.
-  3. **Tier 3 (Keywords):** Busca coincidencias textuales inteligentes de la Razón Social.
-* **Rescate Asistido por IA (Gemini Flash Lite):** Cuando el OCR tradicional falla o la factura es muy borrosa, interviene un agente inteligente de Google Gemini para extraer proveedor, fecha y número. Se puede configurar fácilmente desde la pestaña **"Ajustes"** de la app.
-* **Carga Rápida Manual:** Arrastra y suelta tus PDF o imágenes directamente en el panel general para procesarlos en el acto.
-* **Soporte de Escáner Integrado (NAPS2):** Inicia escaneos silenciosos directamente desde la aplicación web. El documento pasará de papel a tu base de datos en un solo clic.
-* **Tutorial Interactivo:** Un asistente paso a paso integrado para guiar a los nuevos usuarios.
-* **Versión Ejecutable (.exe):** Incluye un script `build.bat` que empaqueta todo el programa en un solo archivo ejecutable para Windows, sin depender de la consola.
+1. 🤖 **Bot de Sincronización Automática con ARCA:**
+   - Realiza el flujo completo de inicio de sesión con CUIT y Clave Fiscal.
+   - Maneja pestañas múltiples y selecciona automáticamente la empresa o persona representada configurada.
+   - Navega a *Mis Comprobantes Recibidos*, ajusta el rango de fechas desde el 1 del mes hasta la fecha actual y hace clic en **Buscar**.
+   - Descarga el reporte CSV e integra a los nuevos proveedores automáticamente en `suppliers.json`.
+
+2. 📥 **Carga Manual de CSV / ZIP de ARCA:**
+   - Permite subir archivos `.csv` o `.zip` directamente desde la interfaz web.
+   - Algoritmo seguro de sanitización con marcas de tiempo para prevenir errores de bloqueo de archivos (`Permission Denied`).
+
+3. 🔍 **Motor de Matching Multinivel de Proveedores:**
+   - **Tier 1 (CAE):** Cruce exacto con Código de Autorización Electrónico en reportes ARCA.
+   - **Tier 2 (CUIT):** Identificación inequívoca por CUIT del emisor.
+   - **Tier 3 (Keywords & Regex):** Reconocimiento inteligente por Razón Social y patrones regex de numeración.
+
+4. 📑 **Clasificación de Documentos Fiscales vs. Remitos No Fiscales:**
+   - Detecta presupuestos, notas de pedido, vaticinios y remitos comerciales, derivándolos automáticamente a la sección **Remitos / Documentos No Fiscales**.
+
+5. 🖨️ **Escaneo Físico Directo (NAPS2 Integration):**
+   - Ejecuta un escaneo silencioso desde tu escáner físico con un solo clic en el Dashboard web.
+
+6. 🩺 **Doctor de Diagnóstico Integrado (`doctor.py`):**
+   - Escanea el estado de la base de datos y archivos huérfanos, ofreciendo curas automáticas con un solo botón.
+
+7. 🔄 **Restablecimiento Completo a Fábrica (`reset.py`):**
+   - Script para borrar todo historial de archivos, logs, credenciales y proveedores, dejando la aplicación 100% limpia de fábrica.
 
 ---
 
 ## 📋 Requisitos del Sistema (Dependencias Externas)
 
-Aunque compiles el programa como `.exe`, el sistema operativo necesita de estos dos programas externos gratuitos para funcionar al 100%:
+Para aprovechar todas las funciones de OCR y escaneo físico, se requiere tener instalados:
 
-### 1. Tesseract OCR (Requerido para imágenes/PDFs escaneados)
-* Descargue el instalador desde [UB-Mannheim Tesseract Wiki](https://github.com/UB-Mannheim/tesseract/wiki).
-* Se instala por defecto en: `C:\Program Files\Tesseract-OCR\tesseract.exe`
+### 1. Tesseract OCR (Para imágenes y PDFs escaneados)
+- **Ruta esperada:** `C:\Program Files\Tesseract-OCR\tesseract.exe`
+- Descarga: [UB-Mannheim Tesseract Wiki](https://github.com/UB-Mannheim/tesseract/wiki)
 
-### 2. NAPS2 (Requerido para el botón Escáner Automático)
-* Descargue desde [naps2.com](https://www.naps2.com/).
-* Se instala por defecto en: `C:\Program Files\NAPS2\NAPS2.Console.exe`
-* **IMPORTANTE:** Tras instalarlo, abre NAPS2 y ve a **"Perfiles" -> "Nuevo"** para configurar tu escáner físico. Si no hay perfil, el botón de escaneo en la web fallará.
+### 2. NAPS2 (Para el botón de escáner físico)
+- **Ruta esperada:** `C:\Program Files\NAPS2\NAPS2.Console.exe`
+- Descarga: [naps2.com](https://www.naps2.com/)
+- *Nota:* En NAPS2, configura al menos un Perfil de escáner predeterminado.
 
-*(Nota: Si distribuyes el `.exe`, el programa está programado para detectar si faltan estos dos componentes e intentará instalarlos automáticamente mediante `winget` la primera vez que se abra).*
-
----
-
-## 🛠️ Cómo Iniciar y Usar (Modo Ejecutable)
-
-La forma más cómoda de utilizar PDFWatcher es compilarlo.
-
-### 1. Generar el Ejecutable
-Asegúrate de tener Python instalado y haz doble clic en el archivo **`build.bat`**. 
-El script instalará las dependencias necesarias de Python y generará una carpeta `dist/PDFWatcher` que contiene el archivo **`PDFWatcher.exe`**. 
-
-### 2. Abrir la Aplicación
-Haz doble clic en **`PDFWatcher.exe`**.
-Se abrirá automáticamente una pestaña en tu navegador web mostrando la interfaz gráfica de la aplicación. 
-*(Nota: Al cerrar la pestaña web, el proceso en segundo plano se apagará automáticamente luego de 15 segundos).*
-
-### 3. Cargar Proveedores (Paso Crucial Inicial)
-Si es la primera vez que lo abres:
-1. Ve a la pestaña **Cargar CSV de ARCA**.
-2. Descarga tu reporte histórico de *Mis Comprobantes Recibidos* desde la web de ARCA (se recomiendan al menos los últimos 6 meses para un buen aprendizaje inicial).
-3. Arrastra el archivo **.zip** o **.csv** al recuadro de la aplicación.
-4. El programa registrará a todos tus proveedores automáticamente. ¡Luego de esto, el sistema está listo para reconocer facturas!
-
-### 4. Procesar Facturas
-- **Vigía en Segundo Plano:** Presiona "Iniciar" en el Panel General y cualquier documento que coloques en la carpeta `Facturas_A_Procesar` será ordenado al instante.
-- **Carga Manual:** En el mismo Panel General, puedes simplemente arrastrar un PDF o imagen al recuadro de "Carga Rápida" para procesarlo sin siquiera abrir las carpetas de Windows.
+*(Si ejecutas el programa en una máquina limpia, PDFWatcher intentará instalar estas dependencias automáticamente mediante `winget` al abrirse).*
 
 ---
 
-## ⚙️ Configuración de Inteligencia Artificial
+## 📂 Uso y Scripts Disponibles
 
-Para activar la inteligencia artificial de **Gemini** que rescata facturas ilegibles:
-1. Ve a [Google AI Studio](https://aistudio.google.com/) y genera una API Key gratuita.
-2. Abre la aplicación PDFWatcher y ve a la pestaña **Ajustes**.
-3. Pega tu clave y dale a "Guardar". La clave quedará guardada de forma encriptada y segura en tu equipo local (`api_key.txt`).
+### 1. Iniciar la Aplicación
+```bash
+python app.py
+```
+O simplemente haciendo doble clic en **`start.bat`**.
+
+### 2. Sincronización Automática con ARCA
+1. Abre la aplicación y ve a **Ajustes**.
+2. Completa tu CUIT y Clave Fiscal en el apartado de ARCA.
+3. Ve a la pestaña **Cargar CSV de ARCA** y presiona **Sincronizar con ARCA**.
+4. El bot ejecutará todo el proceso en segundo plano y añadirá los proveedores detectados.
+
+### 3. Restablecimiento a Estado de Fábrica
+Para borrar todos los datos, comprobantes, credenciales y proveedores:
+```bash
+python reset.py
+```
+*(También admite el flag `-y` o `--force` para ejecuciones desatendidas).*
+
+### 4. Compilar Ejecutable de Windows (.exe)
+Para generar la versión portable redistribuible:
+```bash
+build.bat
+```
+El ejecutable final se creará en `dist/PDFWatcher/PDFWatcher.exe`.
 
 ---
 
-## 📂 Modo Desarrollador (Para modificaciones)
-Si deseas trabajar en el código fuente en lugar del `.exe`:
-1. Ejecuta `setup.bat` para instalar las librerías (`requirements.txt`).
-2. Para iniciar la interfaz, simplemente ejecuta:
-   ```bash
-   python app.py
-   ```
+## 🔒 Privacidad y Seguridad
+- Todas las credenciales de ARCA y API Keys se almacenan **exclusivamente de forma local y ofuscada/encriptada** en tu equipo (`arca_credentials.json` y `api_key.txt`).
+- No se envía información ni datos contables a servidores de terceros, excepto las consultas estrictamente dirigidas a la API oficial de Google Gemini o al portal de ARCA/AFIP.
