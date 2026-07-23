@@ -181,6 +181,44 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Historial Reciente de Procesamiento para el Usuario -->
+                <div class="glass-card" style="margin-top: 1.5rem; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-color, #a855f7);"></i>
+                                Historial Reciente de Procesamiento
+                            </h3>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 4px 0 0 0;">Verificación rápida de estado, tiempos y uso de IA por factura.</p>
+                        </div>
+                        <button id="btn-clear-user-history" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-trash-can"></i> Limpiar Historial
+                        </button>
+                    </div>
+
+                    <div class="table-container" style="max-height: 280px; overflow-y: auto;">
+                        <table class="modern-table" style="font-size: 0.88rem;">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Proveedor</th>
+                                    <th>Nº Comprobante / Archivo</th>
+                                    <th>Método / IA</th>
+                                    <th>Tiempo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-history-table-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">
+                                        Sin comprobantes procesados en esta sesión.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </section>
 
             <!-- Tab: Suppliers -->

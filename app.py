@@ -218,6 +218,15 @@ def processed_remitos():
 def serve_remito_file(filepath):
     return send_from_directory(config.REMITOS_FOLDER, filepath)
 
+@app.route('/api/user_history', methods=['GET', 'DELETE'])
+def handle_user_history():
+    from processor import get_user_history, clear_user_history
+    if request.method == 'DELETE':
+        success = clear_user_history()
+        return jsonify({"success": success, "message": "Historial limpiado correctamente"})
+    else:
+        return jsonify(get_user_history())
+
 @app.route('/api/file/<path:filepath>')
 def serve_file(filepath):
     return send_from_directory(config.OUTPUT_FOLDER, filepath)

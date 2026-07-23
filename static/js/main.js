@@ -1,4 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Utility: HTML Escape ---
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // --- Navigation ---
     const navLinks = document.querySelectorAll('.nav-links li, li[data-tab="doctor"]');
     const tabPanes = document.querySelectorAll('.tab-pane');
@@ -188,6 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast("¡Atención! Una factura no reconocida requiere revisión.", "warning");
             }
             prevUnrecognizedCount = data.stats.unrecognized;
+
+            fetchUserHistory();
         } catch (error) {
             console.error("Error fetching status:", error);
         }
@@ -1298,5 +1311,82 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- Historial Reciente de Procesamiento para el Usuario ---
+    const userHistoryTableBody = document.getElementById('user-history-table-body');
+    const btnClearUserHistory = document.getElementById('btn-clear-user-history');
+
+    async function fetchUserHistory() {
+        if (!userHistoryTableBody) return;
+        try {
+            const res = await fetch('/api/user_history');
+            if (res.ok) {
+                const history = await res.json();
+                renderUserHistory(history);
+            }
+        } catch (e) {
+            console.error("Error fetching user history:", e);
+        }
+    }
+
+    function renderUserHistory(history) {
+        if (!userHistoryTableBody) return;
+        if (!history || history.length === 0) {
+            userHistoryTableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">
+                        Sin comprobantes procesados en esta sesión.
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        userHistoryTableBody.innerHTML = history.map(item => {
+            let statusBadge = '';
+            if (item.status_code === 'ok') {
+                statusBadge = `<span class="badge badge-success" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;"><i class="fa-solid fa-check"></i> ${escapeHtml(item.status || 'Procesada')}</span>`;
+            } else if (item.status_code === 'remito') {
+                statusBadge = `<span class="badge" style="background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.4); display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;"><i class="fa-solid fa-receipt"></i> ${escapeHtml(item.status || 'Remito')}</span>`;
+            } else {
+                statusBadge = `<span class="badge badge-danger" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;"><i class="fa-solid fa-xmark"></i> ${escapeHtml(item.status || 'No Reconocida')}</span>`;
+            }
+
+            let iaBadge = '';
+            if (item.used_ai) {
+                iaBadge = `<span class="badge" style="background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Rescatado con IA</span>`;
+            } else {
+                iaBadge = `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;"><i class="fa-solid fa-bolt"></i> Directo (OCR/CAE)</span>`;
+            }
+
+            const timeFormatted = item.elapsed_seconds !== undefined ? `${item.elapsed_seconds}s` : '< 1s';
+
+            return `
+                <tr>
+                    <td style="white-space: nowrap; color: var(--text-secondary); font-family: monospace;">${escapeHtml(item.time_str || item.timestamp || '-')}</td>
+                    <td style="font-weight: 500; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.supplier || 'Desconocido')}</td>
+                    <td style="color: var(--text-primary); font-family: monospace;">${escapeHtml(item.invoice_number || item.filename || '-')}</td>
+                    <td>${iaBadge}</td>
+                    <td style="color: var(--text-secondary); font-family: monospace;">${timeFormatted}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    if (btnClearUserHistory) {
+        btnClearUserHistory.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/api/user_history', { method: 'DELETE' });
+                if (res.ok) {
+                    showToast("Historial limpiado correctamente");
+                    renderUserHistory([]);
+                }
+            } catch (e) {
+                console.error("Error clearing user history:", e);
+                showToast("Error al limpiar historial", "error");
+            }
+        });
+    }
+
     fetchArcaCredentials();
+    fetchUserHistory();
 });
