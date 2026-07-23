@@ -33,8 +33,8 @@ python -m pip install -r requirements.txt
 python -m pip install pyinstaller
 
 echo [2/4] Generando el archivo ejecutable...
-:: Usa --add-data para incluir las carpetas de Flask (templates y static)
-python -m PyInstaller --noconfirm --onedir --windowed --name "PDFWatcher" --version-file=version.txt --add-data "templates;templates/" --add-data "static;static/" app.py
+:: Usa --add-data para incluir las carpetas de Flask (templates y static) y --collect-all para empaquetar Selenium completo
+python -m PyInstaller --noconfirm --onedir --windowed --name "PDFWatcher" --version-file=version.txt --collect-all="selenium" --hidden-import="selenium.webdriver.edge.webdriver" --hidden-import="selenium.webdriver.chrome.webdriver" --hidden-import="selenium.webdriver.edge.options" --hidden-import="selenium.webdriver.chrome.options" --hidden-import="selenium.webdriver.common.by" --hidden-import="selenium.webdriver.support.ui" --hidden-import="selenium.webdriver.support.expected_conditions" --add-data "templates;templates/" --add-data "static;static/" app.py
 
 if %errorlevel% neq 0 (
     echo.

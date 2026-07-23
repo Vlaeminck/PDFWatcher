@@ -119,10 +119,10 @@ NON_FISCAL_PATTERNS = [
     r'\borden\s+de\s+servicio\b',
     r'\bsolicitud\s+de\s+pedido\b',
     
-    # 3. Documentos de Logística y Entrega
-    r'\bremito\b',
-    r'\bremitos\b',
-    r'\bremito\s+electr[oó]nico\b',
+    # 3. Documentos de Logística y Entrega Específicos
+    r'\bremito\s+no\s+v[aá]lido\s+como\s+factura\b',
+    r'\bremito\s+provisorio\b',
+    r'\bremito\s+interno\b',
     r'\bhoja\s+de\s+ruta\b',
     r'\bgu[ií]a\s+de\s+transporte\b',
     r'\bremisi[oó]n\b',
@@ -143,9 +143,54 @@ def is_non_fiscal_document(text):
     if not text:
         return False
     text_lower = text.lower()
+
+    # ---------------------------------------------------------------------------
+    # REGLA SISTÉMICA DE EXCLUSIÓN FISCAL (PRIORIDAD ABSOLUTA)
+    # Si el comprobante posee elementos característicos de una Factura Fiscal de AFIP/ARCA,
+    # NUNCA puede ser considerado un Remito o Documento No Fiscal.
+    # ---------------------------------------------------------------------------
+
+    # 1. Condición Fiscal (IVA Responsable Inscripto, Exento, Monotributo)
+    if any(re.search(p, text_lower) for p in [
+        r'\biva\s+responsable\s+inscripto\b',
+        r'\bresponsable\s+inscripto\b',
+        r'\bresp\.?\s*inscripto\b',
+        r'\bcondici[oó]n\s+frente\s+al\s+iva\s*:\s*responsable\s+inscripto\b',
+        r'\biva\s*:\s*responsable\s+inscripto\b',
+        r'\biva\s+exento\b',
+        r'\bresponsable\s+monotributo\b'
+    ]):
+        return False
+
+    # 2. Encabezados y Tipo de Comprobante Oficial AFIP (ej. "Factura / Invoice", "Código 01/06/11", Letra fiscal + N°)
+    if any(re.search(p, text_lower) for p in [
+        r'\bfactura\s*/?\s*invoice\b',
+        r'\bfactura\s+[abcm]\b',
+        r'\btique\s+factura\b',
+        r'\bc[oó]digo\s+0?1\b',   # Código 01 = Factura A
+        r'\bc[oó]digo\s+0?6\b',   # Código 06 = Factura B
+        r'\bc[oó]digo\s+11\b',   # Código 11 = Factura C
+        r'\bc[oó]digo\s+51\b',   # Código 51 = Factura M
+        r'\bc[oó]d\.?\s*0?[16]|11|51\b',
+        r'\b[abcm]\s*-\s*0*\d{1,5}\s*-\s*\d{8}\b'
+    ]):
+        return False
+
+    # 3. Código CAE / CAEA Oficial de AFIP/ARCA
+    if re.search(r'\bc\.?a\.?e\.?\s*[:\s#]*\d{14}\b', text_lower) or re.search(r'\bc[oó]d(?:igo)?\s+de\s+autorizaci[oó]n\s*[:\s#]*\d{14}\b', text_lower):
+        return False
+
+    # 4. Desglose de Impuestos (Importe Neto Gravado, IVA 21%, Importe Total)
+    if re.search(r'\bneto\s+gravado\b', text_lower) and (re.search(r'\biva\s+21%\b', text_lower) or re.search(r'\bimporte\s*total\b', text_lower)):
+        return False
+
+    # ---------------------------------------------------------------------------
+    # EVALUACIÓN DE PATRONES NO FISCALES (Solo si NO es una Factura Fiscal)
+    # ---------------------------------------------------------------------------
     for pattern in NON_FISCAL_PATTERNS:
         if re.search(pattern, text_lower):
             return True
+
     return False
 
 def move_to_remitos(file_path, new_filename):
@@ -975,6 +1020,11 @@ def extract_data_via_ai(file_path):
         
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
+        
+        if isinstance(data, dict):
+            raw_str = json.dumps(data).lower()
+            if any(re.search(pat, raw_str) for pat in [r'\biva\s+responsable\s+inscripto\b', r'\bresponsable\s+inscripto\b', r'\bresp\.?\s*inscripto\b']):
+                data['es_documento_no_fiscal'] = False
         
         return data
             

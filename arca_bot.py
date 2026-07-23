@@ -8,6 +8,26 @@ import datetime
 import traceback
 from threading import Lock
 
+import selenium
+import selenium.webdriver
+import selenium.webdriver.edge.webdriver
+import selenium.webdriver.edge.options
+import selenium.webdriver.edge.service
+import selenium.webdriver.chrome.webdriver
+import selenium.webdriver.chrome.options
+import selenium.webdriver.chrome.service
+import selenium.webdriver.common.by
+import selenium.webdriver.support.ui
+import selenium.webdriver.support.expected_conditions
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.edge.webdriver import WebDriver as EdgeDriver
+from selenium.webdriver.chrome.webdriver import WebDriver as ChromeDriver
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+
 import config
 
 # Archivo seguro de credenciales
@@ -253,7 +273,7 @@ def run_arca_bot_sync():
 
         files_before = set(glob.glob(os.path.join(download_folder, "*.csv")) + glob.glob(os.path.join(download_folder, "*.CSV")))
 
-        options_edge = webdriver.EdgeOptions()
+        options_edge = EdgeOptions()
         options_edge.add_argument("--headless=new")
         options_edge.add_argument("--disable-gpu")
         options_edge.add_argument("--no-sandbox")
@@ -269,17 +289,17 @@ def run_arca_bot_sync():
 
         driver = None
         try:
-            driver = webdriver.Edge(options=options_edge)
+            driver = EdgeDriver(options=options_edge)
             log_arca_event("INFO", "Navegador Microsoft Edge iniciado con éxito.")
         except Exception as e_edge:
             log_arca_event("WARNING", f"Microsoft Edge no disponible ({e_edge}). Probando Chrome...")
-            options_chrome = webdriver.ChromeOptions()
+            options_chrome = ChromeOptions()
             options_chrome.add_argument("--headless=new")
             options_chrome.add_argument("--disable-gpu")
             options_chrome.add_argument("--no-sandbox")
             options_chrome.add_argument("--window-size=1920,1080")
             options_chrome.add_experimental_option("prefs", prefs)
-            driver = webdriver.Chrome(options=options_chrome)
+            driver = ChromeDriver(options=options_chrome)
             log_arca_event("INFO", "Navegador Google Chrome iniciado con éxito.")
 
         wait = WebDriverWait(driver, 20)
@@ -531,23 +551,37 @@ def run_arca_bot_sync():
             log_arca_event("ERROR", "No se pudo localizar el botón CSV en la tabla de resultados.")
             raise RuntimeError("No se pudo localizar el botón CSV en los resultados de la consulta.")
 
-        # Esperar archivo descargado en CSV ARCA
+        # Esperar archivo descargado en CSV ARCA (soporta .csv y .zip)
         downloaded_file = None
-        for i in range(25):
+        for i in range(30):
             time.sleep(1)
-            files_after = set(glob.glob(os.path.join(download_folder, "*.csv")) + glob.glob(os.path.join(download_folder, "*.CSV")))
-            new_files = files_after - files_before
+            files_after = set(glob.glob(os.path.join(download_folder, "*.*")))
+            new_files = {f for f in (files_after - files_before) if f.lower().endswith(('.csv', '.zip'))}
             if new_files:
                 downloaded_file = list(new_files)[0]
                 break
 
         if not downloaded_file:
-            all_csvs = sorted(glob.glob(os.path.join(download_folder, "*.csv")) + glob.glob(os.path.join(download_folder, "*.CSV")), key=os.path.getmtime, reverse=True)
-            if all_csvs:
-                downloaded_file = all_csvs[0]
-                log_arca_event("INFO", f"CSV tomado de la carpeta: {os.path.basename(downloaded_file)}")
+            all_valid = sorted([f for f in glob.glob(os.path.join(download_folder, "*.*")) if f.lower().endswith(('.csv', '.zip'))], key=os.path.getmtime, reverse=True)
+            if all_valid:
+                downloaded_file = all_valid[0]
+                log_arca_event("INFO", f"Comprobante tomado de la carpeta: {os.path.basename(downloaded_file)}")
             else:
-                raise RuntimeError("No se detectó el archivo CSV descargado de ARCA en la carpeta CSV ARCA.")
+                raise RuntimeError("No se detectó el archivo CSV/ZIP descargado de ARCA en la carpeta CSV ARCA.")
+
+        # Si el archivo descargado es un ZIP, descomprimirlo automáticamente
+        if downloaded_file.lower().endswith('.zip'):
+            import zipfile
+            try:
+                log_arca_event("INFO", f"Descomprimiendo archivo ZIP descargado: {os.path.basename(downloaded_file)}...")
+                with zipfile.ZipFile(downloaded_file, 'r') as zip_ref:
+                    for zip_info in zip_ref.infolist():
+                        if zip_info.filename.lower().endswith('.csv'):
+                            zip_info.filename = os.path.basename(zip_info.filename)
+                            zip_ref.extract(zip_info, download_folder)
+                            log_arca_event("INFO", f"CSV extraído exitosamente desde ZIP: {zip_info.filename}")
+            except Exception as e_unzip:
+                log_arca_event("WARNING", f"Advertencia al descomprimir ZIP: {e_unzip}")
 
         # Paso 8: Procesar el CSV e integrar proveedores
         update_status("PROCESSING", "Procesando archivo CSV y actualizando lista de proveedores...")

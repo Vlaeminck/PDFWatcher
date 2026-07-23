@@ -111,6 +111,21 @@ def extract_suppliers_from_csv_folder(csv_folder):
         print(f"La carpeta {csv_folder} no existe.")
         return []
     
+    # Descomprimir automáticamente cualquier archivo ZIP presente en la carpeta
+    import zipfile
+    for f in os.listdir(csv_folder):
+        if f.lower().endswith('.zip'):
+            zip_path = os.path.join(csv_folder, f)
+            try:
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    for zip_info in zip_ref.infolist():
+                        if zip_info.filename.lower().endswith('.csv'):
+                            zip_info.filename = os.path.basename(zip_info.filename)
+                            zip_ref.extract(zip_info, csv_folder)
+                print(f"Extraído archivo CSV desde ZIP: {f}")
+            except Exception as e_zip:
+                print(f"Error al descomprimir ZIP {f}: {e_zip}")
+    
     csv_files = [os.path.join(csv_folder, f) for f in os.listdir(csv_folder) if f.lower().endswith('.csv')]
     if not csv_files:
         print(f"No se encontraron archivos CSV en {csv_folder}")
