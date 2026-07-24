@@ -23,6 +23,7 @@ Los archivos procesados se organizan de forma jerárquica y limpia en el sistema
 ### 🔹 Frontend (Interfaz de Usuario)
 * **HTML5 & Vanilla CSS3:** Diseño premium con estética *Glassmorphism*, modo oscuro (Dark Mode), paleta de colores armónica, transiciones suaves y micro-animaciones.
 * **Vanilla JavaScript ES6+:** Aplicación Single Page (SPA) interactiva basada en Fetch API, Drag & Drop API, actualización dinámica en tiempo real y vista en árbol (*Tree View*) para facturas procesadas y remitos.
+* **Ventana Modal Interactiva de Credenciales:** Solicitud inteligente de credenciales al iniciar o al sincronizar (CUIT, Clave Fiscal, Razón Social y API Key).
 * **Driver.js:** Asistente y tutorial guiado interactivo paso a paso.
 * **FontAwesome 6:** Iconografía moderna para controles y estados visuales.
 
@@ -30,11 +31,12 @@ Los archivos procesados se organizan de forma jerárquica y limpia en el sistema
 
 ## 🚀 Características Principales
 
-1. 🤖 **Bot de Sincronización Automática con ARCA:**
-   - Realiza el flujo completo de inicio de sesión con CUIT y Clave Fiscal.
-   - Maneja pestañas múltiples y selecciona automáticamente la empresa o persona representada configurada.
-   - Navega a *Mis Comprobantes Recibidos*, ajusta el rango de fechas desde el 1 del mes hasta la fecha actual y hace clic en **Buscar**.
-   - Descarga el reporte CSV e integra a los nuevos proveedores automáticamente en `suppliers.json`.
+1. 🤖 **Bot de Sincronización Automática con ARCA (Sin requerir CSV previo):**
+   - **Solicitud de Credenciales por Modal:** Al abrir la app o al pulsar "Sincronizar ARCA", si el sistema detecta credenciales incompletas, muestra una ventana modal interactiva para ingresar CUIT, Clave Fiscal, Razón Social Representada y API Key de Gemini.
+   - **Descarga Inicial desde el 1 de Enero del Año Actual:** En la primera sincronización (o cuando no haya archivos en la carpeta `CSV ARCA`), descarga automáticamente todos los comprobantes recibidos desde el **01/01 del año en curso** hasta la fecha actual.
+   - Realiza el flujo completo de inicio de sesión automatizado con Selenium (Edge/Chrome Headless).
+   - Selecciona automáticamente la empresa o persona representada configurada.
+   - Descarga el reporte CSV e integra a los nuevos proveedores automáticamente en `suppliers.json`, recargando el motor de búsqueda en tiempo real sin reiniciar el sistema.
 
 2. 📥 **Carga Manual de CSV / ZIP de ARCA:**
    - Permite subir archivos `.csv` o `.zip` directamente desde la interfaz web.
@@ -85,10 +87,10 @@ python app.py
 O simplemente haciendo doble clic en **`start.bat`**.
 
 ### 2. Sincronización Automática con ARCA
-1. Abre la aplicación y ve a **Ajustes**.
-2. Completa tu CUIT y Clave Fiscal en el apartado de ARCA.
-3. Ve a la pestaña **Cargar CSV de ARCA** y presiona **Sincronizar con ARCA**.
-4. El bot ejecutará todo el proceso en segundo plano y añadirá los proveedores detectados.
+1. Abre la aplicación (si no tienes credenciales guardadas, la ventana modal se abrirá automáticamente).
+2. Ingresa tu CUIT, Clave Fiscal y la Razón Social a representar.
+3. Presiona **Guardar y Sincronizar**.
+4. El bot ejecutará todo el proceso en segundo plano, descargará los comprobantes desde el 1 de enero y añadirá los proveedores detectados.
 
 ### 3. Restablecimiento a Estado de Fábrica
 Para borrar todos los datos, comprobantes, credenciales y proveedores:
@@ -107,5 +109,5 @@ El ejecutable final se creará en `dist/PDFWatcher/PDFWatcher.exe`.
 ---
 
 ## 🔒 Privacidad y Seguridad
-- Todas las credenciales de ARCA y API Keys se almacenan **exclusivamente de forma local y ofuscada/encriptada** en tu equipo (`arca_credentials.json` y `api_key.txt`).
+- Todas las credenciales de ARCA y API Keys se almacenan **exclusivamente de forma local y encriptada/ofuscada** en tu equipo (`arca_credentials.json` y `api_key.txt`).
 - No se envía información ni datos contables a servidores de terceros, excepto las consultas estrictamente dirigidas a la API oficial de Google Gemini o al portal de ARCA/AFIP.
