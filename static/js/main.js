@@ -1123,28 +1123,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSyncArcaUpload = document.getElementById('btn-sync-arca-upload');
     const arcaSyncStatusMsg = document.getElementById('arca-sync-status-msg');
 
-    async function fetchArcaCredentials() {
+    // Modal elements
+    const arcaCredsModal = document.getElementById('arca-credentials-modal');
+    const modalArcaCuit = document.getElementById('modal-arca-cuit');
+    const modalArcaClave = document.getElementById('modal-arca-clave');
+    const modalArcaRepresentada = document.getElementById('modal-arca-representada');
+    const modalArcaFullYear = document.getElementById('modal-arca-full-year');
+    const modalApiKey = document.getElementById('modal-api-key');
+    const modalApiKeyStatus = document.getElementById('modal-api-key-status');
+    const modalApiKeyHint = document.getElementById('modal-api-key-hint');
+    const btnModalSaveSyncArca = document.getElementById('btn-modal-save-sync-arca');
+    const closeArcaCredsModalBtns = document.querySelectorAll('.close-arca-creds-modal');
+
+    let isArcaConfigured = false;
+
+    async function checkApiKeyStatus() {
+        try {
+            const res = await fetch('/api/settings/get_api_key');
+            const data = await res.json();
+            const hasKey = data && data.api_key && data.api_key !== "TU_API_KEY_AQUI";
+            if (modalApiKeyStatus) {
+                if (hasKey) {
+                    modalApiKeyStatus.className = 'badge badge-success';
+                    modalApiKeyStatus.textContent = 'Configurada';
+                    if (modalApiKey && !modalApiKey.value) modalApiKey.placeholder = '•••••••• (Clave activa)';
+                    if (modalApiKeyHint) modalApiKeyHint.textContent = 'Tu API Key de Gemini está guardada y lista para usarse.';
+                } else {
+                    modalApiKeyStatus.className = 'badge badge-warning';
+                    modalApiKeyStatus.textContent = 'Sin API Key';
+                    if (modalApiKeyHint) modalApiKeyHint.textContent = 'Si posees una API Key, ingresala para habilitar el procesamiento por IA.';
+                }
+            }
+            return hasKey;
+        } catch (e) {
+            console.error("Error checking API Key status:", e);
+            return false;
+        }
+    }
+
+    async function fetchArcaCredentials(autoShowModalIfMissing = false) {
         try {
             const res = await fetch('/api/arca/credentials');
             const data = await res.json();
+            
+            checkApiKeyStatus();
+
             if (data.configured) {
+                isArcaConfigured = true;
                 if (inputArcaCuit) inputArcaCuit.value = data.cuit || '';
                 if (inputArcaRepresentada) inputArcaRepresentada.value = data.representada || '';
                 if (inputArcaClave && data.has_clave) inputArcaClave.value = '••••••••';
+                
+                if (modalArcaCuit) modalArcaCuit.value = data.cuit || '';
+                if (modalArcaRepresentada) modalArcaRepresentada.value = data.representada || '';
+                if (modalArcaClave && data.has_clave) modalArcaClave.value = '••••••••';
+
                 if (arcaStatusBadge && arcaStatusText) {
                     arcaStatusBadge.className = 'status-badge status-active';
                     arcaStatusText.textContent = 'Configurada';
                 }
             } else {
+                isArcaConfigured = false;
                 if (arcaStatusBadge && arcaStatusText) {
                     arcaStatusBadge.className = 'status-badge status-inactive';
                     arcaStatusText.textContent = 'Sin configurar';
+                }
+                if (autoShowModalIfMissing && arcaCredsModal) {
+                    showArcaCredsModal();
                 }
             }
         } catch (e) {
             console.error("Error fetching ARCA credentials:", e);
         }
     }
+
+    function showArcaCredsModal() {
+        if (!arcaCredsModal) return;
+        checkApiKeyStatus();
+        arcaCredsModal.style.display = 'flex';
+        arcaCredsModal.classList.add('fade-in');
+    }
+
+    function hideArcaCredsModal() {
+        if (arcaCredsModal) arcaCredsModal.style.display = 'none';
+    }
+
+    closeArcaCredsModalBtns.forEach(btn => {
+        btn.addEventListener('click', hideArcaCredsModal);
+    });
 
     if (btnSaveArcaCreds) {
         btnSaveArcaCreds.addEventListener('click', async () => {
@@ -1182,15 +1248,74 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (btnModalSaveSyncArca) {
+        btnModalSaveSyncArca.addEventListener('click', async () => {
+            const cuit = modalArcaCuit ? modalArcaCuit.value.trim() : '';
+            const clave = modalArcaClave ? modalArcaClave.value.trim() : '';
+            const representada = modalArcaRepresentada ? modalArcaRepresentada.value.trim() : '';
+            const apiKey = modalApiKey ? modalApiKey.value.trim() : '';
+            const fullYear = modalArcaFullYear ? modalArcaFullYear.checked : true;
+
+            if (!cuit || cuit.length !== 11) {
+                showToast("Ingresa un CUIT de usuario válido (11 dígitos)", "error");
+                return;
+            }
+            if (!clave) {
+                showToast("Ingresa la Clave Fiscal de ARCA", "error");
+                return;
+            }
+
+            const originalText = btnModalSaveSyncArca.innerHTML;
+            btnModalSaveSyncArca.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Guardando...';
+            btnModalSaveSyncArca.disabled = true;
+
+            try {
+                const res = await fetch('/api/arca/credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cuit, clave, representada, api_key: apiKey })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast("Credenciales guardadas con éxito", "success");
+                    hideArcaCredsModal();
+                    await fetchArcaCredentials();
+                    startArcaSync(fullYear);
+                } else {
+                    showToast(data.message || "Error al guardar credenciales", "error");
+                }
+            } catch (e) {
+                console.error("Error in modal save & sync:", e);
+                showToast("Error de red al procesar credenciales", "error");
+            } finally {
+                btnModalSaveSyncArca.innerHTML = originalText;
+                btnModalSaveSyncArca.disabled = false;
+            }
+        });
+    }
+
     let arcaPollInterval = null;
 
-    async function startArcaSync() {
+    async function startArcaSync(fullYear = false) {
+        if (!isArcaConfigured) {
+            showArcaCredsModal();
+            return;
+        }
+
         try {
-            const res = await fetch('/api/arca/sync', { method: 'POST' });
+            const res = await fetch('/api/arca/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ full_year: fullYear })
+            });
             const data = await res.json();
             
             if (!data.success) {
-                showToast(data.message, "error");
+                if (data.configured === false) {
+                    showArcaCredsModal();
+                } else {
+                    showToast(data.message, "error");
+                }
                 return;
             }
 
@@ -1262,8 +1387,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    if (btnSyncArca) btnSyncArca.addEventListener('click', startArcaSync);
-    if (btnSyncArcaUpload) btnSyncArcaUpload.addEventListener('click', startArcaSync);
+    if (btnSyncArca) btnSyncArca.addEventListener('click', () => startArcaSync(false));
+    if (btnSyncArcaUpload) btnSyncArcaUpload.addEventListener('click', () => startArcaSync(false));
+
+    window.addEventListener('click', (e) => {
+        if (e.target == arcaCredsModal) {
+            hideArcaCredsModal();
+        }
+    });
 
     // --- Modal de Logs de ARCA ---
     const btnViewArcaLogs = document.getElementById('btn-view-arca-logs');
@@ -1387,6 +1518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    fetchArcaCredentials();
+    fetchArcaCredentials(true);
     fetchUserHistory();
 });

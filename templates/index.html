@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDFWatcher - Gestión de Facturas</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar Navigation -->
@@ -17,7 +19,7 @@
                 <i class="fa-solid fa-file-invoice-dollar logo-icon"></i>
                 <h2>PDFWatcher</h2>
             </div>
-                        <ul class="nav-links">
+            <ul class="nav-links">
                 <li class="active" data-tab="dashboard">
                     <i class="fa-solid fa-chart-pie"></i>
                     <span>Panel General</span>
@@ -43,12 +45,14 @@
                     <span>Ajustes</span>
                 </li>
             </ul>
-            
+
             <div style="margin-top: auto; padding: 1rem; margin-bottom: 1rem; display: flex; gap: 0.5rem;">
                 <button id="btn-help" class="btn btn-secondary" style="flex: 1;">
                     <i class="fa-solid fa-circle-info"></i> Ayuda
                 </button>
-                <button class="btn btn-secondary" onclick="document.querySelector('[data-tab=\'doctor\']').click()" style="padding: 0.5rem 0.8rem; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary);" title="Doctor (Avanzado)">
+                <button class="btn btn-secondary" onclick="document.querySelector('[data-tab=\'doctor\']').click()"
+                    style="padding: 0.5rem 0.8rem; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary);"
+                    title="Doctor (Avanzado)">
                     <i class="fa-solid fa-user-doctor"></i>
                 </button>
                 <li data-tab="doctor" style="display: none;"></li>
@@ -62,14 +66,17 @@
 
             <!-- Tab: Dashboard -->
             <section id="tab-dashboard" class="tab-pane active fade-in">
-                <header class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <header class="section-header"
+                    style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
                         <h1>Panel General</h1>
                         <p>Monitoreo y estadísticas del procesamiento de facturas y remitos.</p>
                     </div>
                     <div id="arca-header-status-container" style="display: flex; align-items: center;">
-                        <span id="arca-header-badge" class="badge" style="display: none; padding: 0.6rem 1rem; font-size: 0.85rem; border-radius: 20px; background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.4);">
-                            <i id="arca-header-icon" class="fa-solid fa-arrows-rotate fa-spin" style="margin-right: 6px;"></i>
+                        <span id="arca-header-badge" class="badge"
+                            style="display: none; padding: 0.6rem 1rem; font-size: 0.85rem; border-radius: 20px; background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.4);">
+                            <i id="arca-header-icon" class="fa-solid fa-arrows-rotate fa-spin"
+                                style="margin-right: 6px;"></i>
                             <span id="arca-header-status-text">Sincronizando ARCA...</span>
                         </span>
                     </div>
@@ -85,7 +92,9 @@
                         </div>
                     </div>
                     <div class="watcher-actions">
-                        <button id="btn-sync-arca" class="btn btn-secondary" style="background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.4);" title="Descargar CSV de ARCA y actualizar proveedores">
+                        <button id="btn-sync-arca" class="btn btn-secondary"
+                            style="background: rgba(155, 89, 182, 0.2); color: #9b59b6; border: 1px solid rgba(155, 89, 182, 0.4);"
+                            title="Descargar CSV de ARCA y actualizar proveedores">
                             <i class="fa-solid fa-arrows-rotate"></i> Sincronizar ARCA
                         </button>
                         <button id="btn-open-scanner" class="btn btn-secondary">
@@ -99,11 +108,13 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- Progress Bar (Hidden by default) -->
                 <div id="progress-container" class="glass-card" style="display: none; margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                        <span style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase;">Procesando Lote Inicial...</span>
+                        <span
+                            style="color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase;">Procesando
+                            Lote Inicial...</span>
                         <span id="progress-text" style="font-weight: 600;">0 / 0</span>
                     </div>
                     <div class="progress-bar-bg">
@@ -112,14 +123,17 @@
                 </div>
 
                 <!-- AI Processing Indicator (Hidden by default) -->
-                <div id="ai-processing-indicator" class="glass-card" style="display: none; margin-bottom: 2rem; background: linear-gradient(135deg, rgba(74,144,226,0.1), rgba(155,89,182,0.1)); border-left: 4px solid var(--accent-primary);">
+                <div id="ai-processing-indicator" class="glass-card"
+                    style="display: none; margin-bottom: 2rem; background: linear-gradient(135deg, rgba(74,144,226,0.1), rgba(155,89,182,0.1)); border-left: 4px solid var(--accent-primary);">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <div class="ai-robot-icon" style="font-size: 2rem; color: var(--accent-primary);">
                             <i class="fa-solid fa-robot fa-bounce"></i>
                         </div>
                         <div>
-                            <h3 style="margin-bottom: 0.2rem; color: var(--accent-primary);">IA Analizando Documento...</h3>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem;">Gemini está leyendo una factura difícil. Esto puede tardar unos segundos.</p>
+                            <h3 style="margin-bottom: 0.2rem; color: var(--accent-primary);">IA Analizando Documento...
+                            </h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem;">Gemini está leyendo una factura
+                                difícil. Esto puede tardar unos segundos.</p>
                         </div>
                     </div>
                 </div>
@@ -135,8 +149,9 @@
                             <p class="stat-number" id="stat-pending">0</p>
                         </div>
                     </div>
-                    
-                    <div class="glass-card stat-card" id="card-processed" style="cursor: pointer;" title="Ver Facturas Procesadas">
+
+                    <div class="glass-card stat-card" id="card-processed" style="cursor: pointer;"
+                        title="Ver Facturas Procesadas">
                         <div class="stat-icon processed-icon">
                             <i class="fa-solid fa-check-circle"></i>
                         </div>
@@ -146,7 +161,8 @@
                         </div>
                     </div>
 
-                    <div class="glass-card stat-card" id="card-remitos" style="cursor: pointer;" title="Ver Remitos y Documentos No Fiscales">
+                    <div class="glass-card stat-card" id="card-remitos" style="cursor: pointer;"
+                        title="Ver Remitos y Documentos No Fiscales">
                         <div class="stat-icon" style="background: rgba(155, 89, 182, 0.2); color: #9b59b6;">
                             <i class="fa-solid fa-receipt"></i>
                         </div>
@@ -155,8 +171,9 @@
                             <p class="stat-number" id="stat-remitos">0</p>
                         </div>
                     </div>
-                    
-                    <div class="glass-card stat-card" id="card-unrecognized" style="cursor: pointer;" title="Ver Facturas No Reconocidas y Diagnóstico">
+
+                    <div class="glass-card stat-card" id="card-unrecognized" style="cursor: pointer;"
+                        title="Ver Facturas No Reconocidas y Diagnóstico">
                         <div class="stat-icon unrecognized-icon">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                         </div>
@@ -166,33 +183,45 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Subtle Invoice Upload -->
                 <div class="glass-card" style="margin-top: 2rem; padding: 1.5rem;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 2rem;">
                         <div style="flex: 1;">
-                            <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem;"><i class="fa-solid fa-file-invoice" style="margin-right: 8px; color: var(--text-secondary);"></i> Carga Rápida Manual</h3>
-                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">Arrastra tu factura (PDF o Imagen) al área gris o haz clic para seleccionarla.</p>
+                            <h3 style="margin-bottom: 0.5rem; font-size: 1.1rem;"><i class="fa-solid fa-file-invoice"
+                                    style="margin-right: 8px; color: var(--text-secondary);"></i> Carga Rápida Manual
+                            </h3>
+                            <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">Arrastra tu factura
+                                (PDF o Imagen) al área gris o haz clic para seleccionarla.</p>
                         </div>
-                        <div id="invoice-drop-zone" class="drop-zone" style="flex: 1; min-height: unset; padding: 1rem; margin: 0; border: 2px dashed rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease;">
-                            <i class="fa-solid fa-cloud-arrow-up" style="color: var(--text-secondary); font-size: 1.2rem;"></i>
-                            <label for="invoice-file-upload" style="cursor: pointer; color: var(--text-primary); font-weight: 500; margin: 0; width: 100%; text-align: center;">Soltar archivo aquí o Explorar</label>
-                            <input type="file" id="invoice-file-upload" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp" style="display: none;" multiple>
+                        <div id="invoice-drop-zone" class="drop-zone"
+                            style="flex: 1; min-height: unset; padding: 1rem; margin: 0; border: 2px dashed rgba(255,255,255,0.1); background: rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.3s ease;">
+                            <i class="fa-solid fa-cloud-arrow-up"
+                                style="color: var(--text-secondary); font-size: 1.2rem;"></i>
+                            <label for="invoice-file-upload"
+                                style="cursor: pointer; color: var(--text-primary); font-weight: 500; margin: 0; width: 100%; text-align: center;">Soltar
+                                archivo aquí o Explorar</label>
+                            <input type="file" id="invoice-file-upload" accept=".pdf,.png,.jpg,.jpeg,.tiff,.bmp"
+                                style="display: none;" multiple>
                         </div>
                     </div>
                 </div>
 
                 <!-- Historial Reciente de Procesamiento para el Usuario -->
                 <div class="glass-card" style="margin-top: 1.5rem; padding: 1.5rem;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 10px;">
                         <div>
                             <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-clock-rotate-left" style="color: var(--accent-color, #a855f7);"></i>
+                                <i class="fa-solid fa-clock-rotate-left"
+                                    style="color: var(--accent-color, #a855f7);"></i>
                                 Historial Reciente de Procesamiento
                             </h3>
-                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 4px 0 0 0;">Verificación rápida de estado, tiempos y uso de IA por factura.</p>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 4px 0 0 0;">Verificación
+                                rápida de estado, tiempos y uso de IA por factura.</p>
                         </div>
-                        <button id="btn-clear-user-history" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+                        <button id="btn-clear-user-history" class="btn btn-secondary"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
                             <i class="fa-solid fa-trash-can"></i> Limpiar Historial
                         </button>
                     </div>
@@ -211,7 +240,8 @@
                             </thead>
                             <tbody id="user-history-table-body">
                                 <tr>
-                                    <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">
+                                    <td colspan="6"
+                                        style="text-align: center; color: var(--text-secondary); padding: 1.5rem;">
                                         Sin comprobantes procesados en esta sesión.
                                     </td>
                                 </tr>
@@ -232,7 +262,8 @@
                     <div class="table-toolbar">
                         <div class="search-box">
                             <i class="fa-solid fa-search"></i>
-                            <input type="text" id="search-suppliers" placeholder="Filtrar proveedores por nombre o CUIT...">
+                            <input type="text" id="search-suppliers"
+                                placeholder="Filtrar proveedores por nombre o CUIT...">
                         </div>
                         <div class="toolbar-actions">
                             <span id="supplier-count" class="badge">0 proveedores</span>
@@ -241,7 +272,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <table class="modern-table">
                             <thead>
@@ -274,7 +305,8 @@
                     <div class="table-toolbar">
                         <div class="search-box">
                             <i class="fa-solid fa-search"></i>
-                            <input type="text" id="search-processed" placeholder="Filtrar por proveedor o nombre de archivo...">
+                            <input type="text" id="search-processed"
+                                placeholder="Filtrar por proveedor o nombre de archivo...">
                         </div>
                         <div class="toolbar-actions">
                             <span id="processed-count" class="badge">0 facturas</span>
@@ -283,7 +315,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <div id="processed-tree-container" class="tree-container">
                             <!-- Dynamic tree content -->
@@ -307,7 +339,8 @@
                     <div class="table-toolbar">
                         <div class="search-box">
                             <i class="fa-solid fa-search"></i>
-                            <input type="text" id="search-remitos" placeholder="Filtrar por nombre de remito o archivo...">
+                            <input type="text" id="search-remitos"
+                                placeholder="Filtrar por nombre de remito o archivo...">
                         </div>
                         <div class="toolbar-actions">
                             <span id="remitos-count" class="badge">0 remitos</span>
@@ -316,7 +349,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <div id="remitos-tree-container" class="tree-container">
                             <!-- Dynamic tree content -->
@@ -340,7 +373,8 @@
                     <div class="table-toolbar">
                         <div class="search-box">
                             <i class="fa-solid fa-search"></i>
-                            <input type="text" id="search-unrecognized" placeholder="Filtrar por nombre de archivo o tipo de error...">
+                            <input type="text" id="search-unrecognized"
+                                placeholder="Filtrar por nombre de archivo o tipo de error...">
                         </div>
                         <div class="toolbar-actions">
                             <span id="unrecognized-count" class="badge">0 archivos</span>
@@ -349,7 +383,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="table-container">
                         <table class="modern-table">
                             <thead>
@@ -380,16 +414,21 @@
                     <p>Sube los comprobantes exportados de ARCA para actualizar los proveedores y extraer CAEs.</p>
                 </header>
 
-                <div class="glass-card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(155, 89, 182, 0.1), rgba(52, 152, 219, 0.1)); border-left: 4px solid #9b59b6;">
+                <div class="glass-card"
+                    style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(155, 89, 182, 0.1), rgba(52, 152, 219, 0.1)); border-left: 4px solid #9b59b6;">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;">
                         <div>
-                            <h3 style="color: #9b59b6; margin-bottom: 0.3rem;"><i class="fa-solid fa-robot" style="margin-right: 8px;"></i> Sincronización Automática con ARCA</h3>
+                            <h3 style="color: #9b59b6; margin-bottom: 0.3rem;"><i class="fa-solid fa-robot"
+                                    style="margin-right: 8px;"></i> Sincronización Automática con ARCA</h3>
                             <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
-                                Descarga automáticamente el CSV de comprobantes recibidos del mes actual (hasta el día de hoy) y actualiza tus proveedores en un solo clic.
+                                Descarga automáticamente el CSV de comprobantes recibidos del mes actual (hasta el día
+                                de hoy) y actualiza tus proveedores en un solo clic.
                             </p>
-                            <span id="arca-sync-status-msg" style="font-size: 0.85rem; color: var(--text-primary); display: block; margin-top: 0.4rem;"></span>
+                            <span id="arca-sync-status-msg"
+                                style="font-size: 0.85rem; color: var(--text-primary); display: block; margin-top: 0.4rem;"></span>
                         </div>
-                        <button id="btn-sync-arca-upload" class="btn btn-primary" style="background: #9b59b6; border-color: #8e44ad; min-width: 220px;">
+                        <button id="btn-sync-arca-upload" class="btn btn-primary"
+                            style="background: #9b59b6; border-color: #8e44ad; min-width: 220px;">
                             <i class="fa-solid fa-arrows-rotate"></i> Sincronizar con ARCA
                         </button>
                     </div>
@@ -405,14 +444,18 @@
                         <label for="file-upload" class="btn btn-outline">Seleccionar archivo</label>
                         <input type="file" id="file-upload" accept=".csv,.zip" style="display: none;">
                         <p class="file-hint">Solo se admiten archivos .csv o .zip de ARCA</p>
-                        <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(74,144,226,0.1); border-radius: 8px; border-left: 4px solid var(--accent-primary);">
+                        <div
+                            style="margin-top: 1.5rem; padding: 1rem; background: rgba(74,144,226,0.1); border-radius: 8px; border-left: 4px solid var(--accent-primary);">
                             <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0; text-align: left;">
-                                <i class="fa-solid fa-lightbulb" style="color: var(--accent-primary); margin-right: 5px;"></i>
-                                <strong>Recomendación:</strong> Descarga de ARCA al menos <strong>6 meses</strong> de comprobantes recibidos para inicializar tus proveedores. Luego, actualiza subiendo nuevos archivos <strong>cada 3 meses</strong>.
+                                <i class="fa-solid fa-lightbulb"
+                                    style="color: var(--accent-primary); margin-right: 5px;"></i>
+                                <strong>Recomendación:</strong> Descarga de ARCA al menos <strong>6 meses</strong> de
+                                comprobantes recibidos para inicializar tus proveedores. Luego, actualiza subiendo
+                                nuevos archivos <strong>cada 3 meses</strong>.
                             </p>
                         </div>
                     </div>
-                    
+
                     <div id="upload-status" class="upload-status" style="display: none;">
                         <div class="loader"></div>
                         <p>Procesando e identificando nuevos proveedores...</p>
@@ -424,7 +467,8 @@
             <section id="tab-settings" class="tab-pane fade-in" style="display: none;">
                 <header class="section-header">
                     <h1>Ajustes de la Aplicación</h1>
-                    <p>Configura las opciones de Inteligencia Artificial para reconocer facturas borrosas e información de tu Licencia.</p>
+                    <p>Configura las opciones de Inteligencia Artificial para reconocer facturas borrosas e información
+                        de tu Licencia.</p>
                 </header>
 
                 <div class="glass-card" style="margin-bottom: 2rem;">
@@ -432,15 +476,18 @@
                         <div>
                             <h3>Licencia de Uso</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                                Identificador único de tu computadora. Debes registrar este ID con el administrador para habilitar el uso de todas las funciones.
+                                Identificador único de tu computadora. Debes registrar este ID con el administrador para
+                                habilitar el uso de todas las funciones.
                             </p>
                         </div>
-                        <div class="status-badge" id="license-status-badge" style="margin: 0; background: rgba(255, 255, 255, 0.1);">
+                        <div class="status-badge" id="license-status-badge"
+                            style="margin: 0; background: rgba(255, 255, 255, 0.1);">
                             <span id="license-status-text">Verificando...</span>
                         </div>
                     </div>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="input-hardware-id" readonly placeholder="Cargando ID..." style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-primary); font-family: monospace; font-size: 1.1rem; letter-spacing: 1px; text-align: center; cursor: text;">
+                        <input type="text" id="input-hardware-id" readonly placeholder="Cargando ID..."
+                            style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.2); color: var(--text-primary); font-family: monospace; font-size: 1.1rem; letter-spacing: 1px; text-align: center; cursor: text;">
                         <button id="btn-copy-hwid" class="btn btn-secondary">
                             <i class="fa-solid fa-copy"></i> Copiar ID
                         </button>
@@ -453,10 +500,13 @@
                 <div class="glass-card">
                     <h3>API Key de Gemini (Opcional)</h3>
                     <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                        Esta clave se guarda EXCLUSIVAMENTE a nivel local en tu computadora. NO se subirá a ningún lado y respeta todas las normas de privacidad. Tus datos sensibles nunca saldrán de tu PC de forma insegura.
+                        Esta clave se guarda EXCLUSIVAMENTE a nivel local en tu computadora. NO se subirá a ningún lado
+                        y respeta todas las normas de privacidad. Tus datos sensibles nunca saldrán de tu PC de forma
+                        insegura.
                     </p>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="password" id="input-api-key" placeholder="Pega tu API Key aquí..." style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                        <input type="password" id="input-api-key" placeholder="Pega tu API Key aquí..."
+                            style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
                         <button id="btn-save-api-key" class="btn btn-primary">
                             <i class="fa-solid fa-save"></i> Guardar
                         </button>
@@ -465,10 +515,12 @@
                 <div class="glass-card" style="margin-top: 1rem;">
                     <h3>Mi CUIT (Receptor)</h3>
                     <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                        Ingresa el CUIT de tu empresa. El sistema lo ignorará al escanear facturas para evitar confundirlo con el CUIT del proveedor.
+                        Ingresa el CUIT de tu empresa. El sistema lo ignorará al escanear facturas para evitar
+                        confundirlo con el CUIT del proveedor.
                     </p>
                     <div style="display: flex; gap: 1rem; align-items: center;">
-                        <input type="text" id="input-my-cuit" placeholder="Ej: 30714817767" style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                        <input type="text" id="input-my-cuit" placeholder="Ej: 30714817767"
+                            style="flex: 1; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
                         <button id="btn-save-cuit" class="btn btn-primary">
                             <i class="fa-solid fa-save"></i> Guardar CUIT
                         </button>
@@ -480,17 +532,26 @@
                         <div>
                             <h3>Credenciales de ARCA / AFIP (Para Bot Sincronizador)</h3>
                             <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.9rem;">
-                                Ingresa tu CUIT y Clave Fiscal para automatizar la descarga del CSV de comprobantes recibidos. Tus datos se guardan exclusivamente de forma local y encriptada en tu equipo.
+                                Ingresa tu CUIT y Clave Fiscal para automatizar la descarga del CSV de comprobantes
+                                recibidos. Tus datos se guardan exclusivamente de forma local y encriptada en tu equipo.
                             </p>
                         </div>
-                        <div class="status-badge" id="arca-status-badge" style="margin: 0; background: rgba(255, 255, 255, 0.1);">
+                        <div class="status-badge" id="arca-status-badge"
+                            style="margin: 0; background: rgba(255, 255, 255, 0.1);">
                             <span id="arca-status-text">Verificando...</span>
                         </div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: center;">
-                        <input type="text" id="input-arca-cuit" placeholder="CUIT Usuario ARCA" style="padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;" title="CUIT titular del usuario con Clave Fiscal">
-                        <input type="password" id="input-arca-clave" placeholder="Clave Fiscal de ARCA" style="padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
-                        <input type="text" id="input-arca-representada" placeholder="CUIT / Razón Social Empresa (Ej. 30714817767)" style="padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;" title="CUIT o Razón Social a seleccionar si administrás múltiples empresas">
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: center;">
+                        <input type="text" id="input-arca-cuit" placeholder="CUIT Usuario ARCA"
+                            style="padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;"
+                            title="CUIT titular del usuario con Clave Fiscal">
+                        <input type="password" id="input-arca-clave" placeholder="Clave Fiscal de ARCA"
+                            style="padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                        <input type="text" id="input-arca-representada"
+                            placeholder="CUIT / Razón Social Empresa (Ej. 30714817767)"
+                            style="padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;"
+                            title="CUIT o Razón Social a seleccionar si administrás múltiples empresas">
                         <button id="btn-save-arca-creds" class="btn btn-primary">
                             <i class="fa-solid fa-save"></i> Guardar Credenciales
                         </button>
@@ -513,7 +574,8 @@
                 <div class="card glass-effect" style="margin-bottom: 2rem;">
                     <h2>Centro de Diagnóstico</h2>
                     <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-                        Esta herramienta escaneará la carpeta de facturas procesadas en busca de anomalías (archivos desubicados, carpetas vacías o nombres incorrectos) y te permitirá arreglarlos automáticamente.
+                        Esta herramienta escaneará la carpeta de facturas procesadas en busca de anomalías (archivos
+                        desubicados, carpetas vacías o nombres incorrectos) y te permitirá arreglarlos automáticamente.
                     </p>
                     <div style="display: flex; gap: 1rem;">
                         <button id="btn-doctor-scan" class="btn btn-primary" style="flex: 1;">
@@ -526,7 +588,8 @@
                 </div>
 
                 <div class="card glass-effect" id="doctor-results-container" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                         <h2>Reporte Médico</h2>
                         <span id="doctor-count" class="badge">0 anomalías</span>
                     </div>
@@ -555,23 +618,106 @@
     <div id="arca-logs-modal" class="modal" style="display: none;">
         <div class="modal-content glass-card" style="max-width: 800px; width: 90%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3><i class="fa-solid fa-terminal" style="color: var(--accent-primary); margin-right: 8px;"></i> Registros de Depuración de ARCA (<code>registros/arca_error_log.txt</code>)</h3>
+                <h3><i class="fa-solid fa-terminal" style="color: var(--accent-primary); margin-right: 8px;"></i>
+                    Registros de Depuración de ARCA (<code>registros/arca_error_log.txt</code>)</h3>
                 <span class="close-modal close-arca-modal" style="cursor: pointer; font-size: 1.5rem;">&times;</span>
             </div>
-            <pre id="arca-logs-content" style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; color: #a6e22e; max-height: 450px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0;"></pre>
+            <pre id="arca-logs-content"
+                style="background: rgba(0,0,0,0.5); padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; color: #a6e22e; max-height: 450px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin: 0;"></pre>
             <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                <button id="btn-refresh-arca-logs" class="btn btn-secondary"><i class="fa-solid fa-rotate"></i> Actualizar Logs</button>
+                <button id="btn-refresh-arca-logs" class="btn btn-secondary"><i class="fa-solid fa-rotate"></i>
+                    Actualizar Logs</button>
                 <button class="btn btn-primary close-arca-modal">Cerrar</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal: Credenciales ARCA -->
+    <div id="arca-credentials-modal" class="modal" style="display: none;">
+        <div class="modal-content glass-card" style="max-width: 550px; width: 90%;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.8rem;">
+                <h3
+                    style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 10px; color: #9b59b6;">
+                    <i class="fa-solid fa-key"></i> Credenciales de ARCA / AFIP
+                </h3>
+                <span class="close-modal close-arca-creds-modal"
+                    style="cursor: pointer; font-size: 1.5rem;">&times;</span>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+                Ingresa los datos para descargar tus comprobantes de ARCA automáticamente sin depender de archivos CSV
+                cargados manualmente.
+            </p>
+            <form id="arca-modal-form" onsubmit="return false;">
+                <div style="display: flex; flex-direction: column; gap: 0.9rem;">
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.3rem;">CUIT
+                            Usuario (11 dígitos, sin guiones)</label>
+                        <input type="text" id="modal-arca-cuit" placeholder="Ej: 30310000005"
+                            style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.3rem;">Clave
+                            Fiscal de ARCA</label>
+                        <input type="password" id="modal-arca-clave" placeholder="Ingresa tu Clave Fiscal"
+                            style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.3rem;">Razón
+                            Social / CUIT Empresa a Representar</label>
+                        <input type="text" id="modal-arca-representada" placeholder="Ej: PDFWATCHER S.A"
+                            style="width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                    </div>
+
+                    <!-- API Key section optional in modal -->
+                    <div id="modal-api-key-container"
+                        style="background: rgba(74, 144, 226, 0.08); padding: 0.8rem; border-radius: 6px; border: 1px solid rgba(74, 144, 226, 0.2);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                            <label style="font-size: 0.85rem; color: var(--text-primary); font-weight: 500;">API Key de
+                                Gemini (Opcional)</label>
+                            <span id="modal-api-key-status" class="badge"
+                                style="font-size: 0.75rem;">Verificando...</span>
+                        </div>
+                        <input type="password" id="modal-api-key" placeholder="Pega tu API Key de Gemini aquí..."
+                            style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem;">
+                        <small id="modal-api-key-hint"
+                            style="color: var(--text-secondary); font-size: 0.78rem; display: block; margin-top: 0.3rem;">
+                            Si posees una API Key, ingresala para habilitar la lectura con IA.
+                        </small>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 0.3rem;">
+                        <input type="checkbox" id="modal-arca-full-year" checked
+                            style="cursor: pointer; width: 16px; height: 16px; accent-color: #9b59b6;">
+                        <label for="modal-arca-full-year"
+                            style="font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; margin: 0;">
+                            Descargar comprobantes desde el 1 de enero del año actual (01/01 a la fecha)
+                        </label>
+                    </div>
+                </div>
+                <div style="margin-top: 1.3rem; display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary close-arca-creds-modal">Cancelar</button>
+                    <button type="button" id="btn-modal-save-sync-arca" class="btn btn-primary"
+                        style="background: #9b59b6; border-color: #8e44ad;">
+                        <i class="fa-solid fa-arrows-rotate"></i> Guardar y Sincronizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Expiration Banner -->
-    <div id="expiration-banner" style="display: none; position: fixed; bottom: 0; right: 0; left: 250px; background: rgba(231, 76, 60, 0.9); color: white; text-align: center; padding: 10px; font-weight: 500; z-index: 9999; backdrop-filter: blur(5px); border-top: 1px solid rgba(255,255,255,0.2);">
+    <div id="expiration-banner"
+        style="display: none; position: fixed; bottom: 0; right: 0; left: 250px; background: rgba(231, 76, 60, 0.9); color: white; text-align: center; padding: 10px; font-weight: 500; z-index: 9999; backdrop-filter: blur(5px); border-top: 1px solid rgba(255,255,255,0.2);">
         <i class="fa-solid fa-clock"></i> <span id="expiration-text">Tu licencia expirará en X días.</span>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
     <script src="/static/js/main.js"></script>
 </body>
+
 </html>

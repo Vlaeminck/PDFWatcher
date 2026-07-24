@@ -232,14 +232,14 @@ def find_and_click_csv(driver):
 
     return False
 
-def run_arca_bot_sync():
+def run_arca_bot_sync(full_year=False):
     """
     Ejecuta el flujo completo de Selenium respetando la secuencia exacta de pantallas de ARCA:
     1. Login (auth.afip.gob.ar)
     2. Click en 'Mis Comprobantes' y cambio a la NUEVA PESTAÑA.
     3. Selección de persona/empresa representada (ej. GASTRO MARKET S.R.L.).
     4. Click en tarjeta 'Recibidos'.
-    5. Ajuste de fecha del comprobante (1 del mes a hoy).
+    5. Ajuste de fecha del comprobante (1 de enero del año actual o 1 del mes a hoy).
     6. Click en 'BUSCAR' (utilizando el localizador exhaustivo).
     7. Click en 'CSV' para descargar.
     """
@@ -271,7 +271,7 @@ def run_arca_bot_sync():
         download_folder = config.CSV_ARCA_FOLDER
         os.makedirs(download_folder, exist_ok=True)
 
-        files_before = set(glob.glob(os.path.join(download_folder, "*.csv")) + glob.glob(os.path.join(download_folder, "*.CSV")))
+        files_before = set(glob.glob(os.path.join(download_folder, "*")))
 
         options_edge = EdgeOptions()
         options_edge.add_argument("--headless=new")
@@ -506,7 +506,13 @@ def run_arca_bot_sync():
 
         # Paso 5: Ajustar periodo de fechas
         today = datetime.date.today()
-        date_start_str = today.replace(day=1).strftime("%d/%m/%Y")
+        existing_csvs = [f for f in glob.glob(os.path.join(download_folder, "*")) if f.lower().endswith(('.csv', '.zip'))]
+        if full_year or not existing_csvs:
+            date_start_str = today.replace(month=1, day=1).strftime("%d/%m/%Y")
+            log_arca_event("INFO", f"Sincronización inicial/año completo activa: descargando desde {date_start_str} hasta {today.strftime('%d/%m/%Y')}")
+        else:
+            date_start_str = today.replace(day=1).strftime("%d/%m/%Y")
+            log_arca_event("INFO", f"Sincronización mensual activa: descargando desde {date_start_str} hasta {today.strftime('%d/%m/%Y')}")
         date_end_str = today.strftime("%d/%m/%Y")
         date_range_val = f"{date_start_str} - {date_end_str}"
 
@@ -553,16 +559,16 @@ def run_arca_bot_sync():
 
         # Esperar archivo descargado en CSV ARCA (soporta .csv y .zip)
         downloaded_file = None
-        for i in range(30):
+        for i in range(35):
             time.sleep(1)
-            files_after = set(glob.glob(os.path.join(download_folder, "*.*")))
-            new_files = {f for f in (files_after - files_before) if f.lower().endswith(('.csv', '.zip'))}
+            files_after = set(glob.glob(os.path.join(download_folder, "*")))
+            new_files = {f for f in (files_after - files_before) if f.lower().endswith(('.csv', '.zip')) and not f.endswith('.crdownload') and not f.endswith('.tmp')}
             if new_files:
                 downloaded_file = list(new_files)[0]
                 break
 
         if not downloaded_file:
-            all_valid = sorted([f for f in glob.glob(os.path.join(download_folder, "*.*")) if f.lower().endswith(('.csv', '.zip'))], key=os.path.getmtime, reverse=True)
+            all_valid = sorted([f for f in glob.glob(os.path.join(download_folder, "*")) if f.lower().endswith(('.csv', '.zip'))], key=os.path.getmtime, reverse=True)
             if all_valid:
                 downloaded_file = all_valid[0]
                 log_arca_event("INFO", f"Comprobante tomado de la carpeta: {os.path.basename(downloaded_file)}")

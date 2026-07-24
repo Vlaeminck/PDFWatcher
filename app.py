@@ -419,23 +419,37 @@ import arca_bot
 def arca_credentials():
     if request.method == 'GET':
         creds = arca_bot.get_arca_credentials()
+        has_api_key = bool(config.AI_API_KEY and config.AI_API_KEY != "TU_API_KEY_AQUI")
         if creds:
             return jsonify({
                 "configured": True,
                 "cuit": creds.get("cuit", ""),
                 "representada": creds.get("representada", ""),
                 "has_clave": bool(creds.get("clave")),
+                "has_api_key": has_api_key,
                 "updated_at": creds.get("updated_at")
             })
-        return jsonify({"configured": False, "cuit": "", "representada": "", "has_clave": False})
+        return jsonify({"configured": False, "cuit": "", "representada": "", "has_clave": False, "has_api_key": has_api_key})
     
     data = request.json or {}
     cuit = data.get("cuit", "")
     clave = data.get("clave", "")
     representada = data.get("representada", "")
+    api_key = data.get("api_key", "").strip()
+
+    if api_key:
+        try:
+            api_key_path = os.path.join(config.BASE_DIR, 'api_key.txt')
+            obfuscated_key = config.obfuscate_key(api_key)
+            with open(api_key_path, 'w', encoding='utf-8') as f:
+                f.write(obfuscated_key)
+            config.AI_API_KEY = api_key
+        except Exception as e_key:
+            print(f"Error guardando API Key en modal: {e_key}")
+
     try:
         arca_bot.save_arca_credentials(cuit, clave, representada)
-        return jsonify({"success": True, "message": "Credenciales de ARCA guardadas de forma segura."})
+        return jsonify({"success": True, "message": "Credenciales guardadas de forma segura."})
     except ValueError as ve:
         return jsonify({"success": False, "message": str(ve)}), 400
     except Exception as e:
@@ -449,14 +463,22 @@ def arca_sync():
     
     creds = arca_bot.get_arca_credentials()
     if not creds or not creds.get("cuit") or not creds.get("clave"):
-        return jsonify({"success": False, "message": "Debes configurar tu CUIT y Clave Fiscal de ARCA en Ajustes antes de sincronizar."}), 400
+        return jsonify({"success": False, "configured": False, "message": "Debes configurar tu CUIT y Clave Fiscal de ARCA antes de sincronizar."}), 400
 
     status = arca_bot.get_bot_status()
     if status.get("running"):
         return jsonify({"success": False, "message": "La sincronización con ARCA ya está en curso."})
 
+    req_data = request.get_json(silent=True) or {}
+    full_year = req_data.get("full_year", False)
+
     def run_async():
-        arca_bot.run_arca_bot_sync()
+        res = arca_bot.run_arca_bot_sync(full_year=full_year)
+        try:
+            import processor
+            processor.reload_config()
+        except Exception as e_reload:
+            print(f"Error reordenando configuración tras sync: {e_reload}")
 
     thread = threading.Thread(target=run_async)
     thread.start()
