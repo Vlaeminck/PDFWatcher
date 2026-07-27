@@ -327,6 +327,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const noResultsMsg = document.getElementById('no-results-msg');
     const supplierCount = document.getElementById('supplier-count');
     
+    // Stats Pill & Dropdown Elements
+    const btnSupplierStats = document.getElementById('btn-supplier-stats');
+    const supplierStatsDropdown = document.getElementById('supplier-stats-dropdown');
+    const supplierStatsWrapper = document.querySelector('.supplier-stats-wrapper');
+    const headerTotalSuppliers = document.getElementById('header-total-suppliers');
+    const statsYearBadge = document.getElementById('stats-year-badge');
+    const topSuppliersList = document.getElementById('top-suppliers-list');
+
+    if (btnSupplierStats && supplierStatsDropdown) {
+        btnSupplierStats.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isShowing = supplierStatsDropdown.classList.contains('show');
+            if (isShowing) {
+                supplierStatsDropdown.classList.remove('show');
+                if (supplierStatsWrapper) supplierStatsWrapper.classList.remove('active');
+            } else {
+                supplierStatsDropdown.classList.add('show');
+                if (supplierStatsWrapper) supplierStatsWrapper.classList.add('active');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (supplierStatsWrapper && !supplierStatsWrapper.contains(e.target)) {
+                supplierStatsDropdown.classList.remove('show');
+                supplierStatsWrapper.classList.remove('active');
+            }
+        });
+    }
+
     let allSuppliers = [];
 
     async function fetchSuppliers() {
@@ -334,10 +363,73 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/suppliers');
             allSuppliers = await res.json();
             renderSuppliers(allSuppliers);
+            fetchSupplierStats();
         } catch (error) {
             console.error("Error fetching suppliers:", error);
             showToast("Error al cargar proveedores", "error");
         }
+    }
+
+    async function fetchSupplierStats() {
+        try {
+            const res = await fetch('/api/suppliers/stats');
+            const data = await res.json();
+            
+            if (headerTotalSuppliers) {
+                headerTotalSuppliers.textContent = data.total_suppliers || 0;
+            }
+            if (statsYearBadge) {
+                statsYearBadge.textContent = `Año ${data.current_year || new Date().getFullYear()}`;
+            }
+
+            renderTopSuppliers(data.top_suppliers || [], data.total_invoices_ytd || 0);
+        } catch (error) {
+            console.error("Error fetching supplier stats:", error);
+        }
+    }
+
+    function renderTopSuppliers(topSuppliers, totalInvoicesYtd) {
+        if (!topSuppliersList) return;
+        topSuppliersList.innerHTML = '';
+
+        if (topSuppliers.length === 0) {
+            topSuppliersList.innerHTML = `
+                <div style="text-align: center; padding: 1.5rem; color: var(--text-secondary); font-size: 0.85rem;">
+                    <i class="fa-regular fa-folder-open" style="font-size: 1.5rem; margin-bottom: 0.5rem; display: block;"></i>
+                    No hay registros de facturas en el año actual.
+                </div>
+            `;
+            return;
+        }
+
+        const maxCount = topSuppliers[0]?.count || 1;
+
+        topSuppliers.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'top-supplier-item';
+
+            let rankClass = '';
+            if (item.rank === 1) rankClass = 'rank-1';
+            else if (item.rank === 2) rankClass = 'rank-2';
+            else if (item.rank === 3) rankClass = 'rank-3';
+
+            const barWidth = Math.max(8, Math.round((item.count / maxCount) * 100));
+
+            row.innerHTML = `
+                <div class="rank-number ${rankClass}">${item.rank}</div>
+                <div class="supplier-info">
+                    <span class="supplier-name-text" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+                    <div class="supplier-progress-bg">
+                        <div class="supplier-progress-fill" style="width: ${barWidth}%;"></div>
+                    </div>
+                </div>
+                <div class="supplier-invoice-count">
+                    <span class="count-number">${item.count}</span>
+                    <span class="count-label">facturas</span>
+                </div>
+            `;
+            topSuppliersList.appendChild(row);
+        });
     }
 
     function renderSuppliers(suppliersList) {

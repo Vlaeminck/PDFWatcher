@@ -3,6 +3,7 @@ import os
 import time
 import threading
 import importlib
+from datetime import datetime
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 from watcher import watcher_manager
@@ -81,6 +82,51 @@ def get_suppliers():
             "regex": data.get("invoice_regex", "")
         })
     return jsonify(suppliers)
+
+@app.route('/api/suppliers/stats')
+def supplier_stats():
+    importlib.reload(config)
+    current_year = str(datetime.now().year)
+    total_suppliers = len(config.SUPPLIERS)
+    
+    supplier_counts = {}
+    total_invoices_ytd = 0
+    valid_exts = tuple(config.ALLOWED_EXTENSIONS) if hasattr(config, 'ALLOWED_EXTENSIONS') else ('.pdf', '.png', '.jpg', '.jpeg', '.tiff', '.bmp')
+
+    if os.path.exists(config.OUTPUT_FOLDER):
+        for root, dirs, files in os.walk(config.OUTPUT_FOLDER):
+            for file in files:
+                if file.startswith('.') or not file.lower().endswith(valid_exts):
+                    continue
+                rel_path = os.path.relpath(os.path.join(root, file), config.OUTPUT_FOLDER)
+                parts = rel_path.replace('\\', '/').split('/')
+                if len(parts) >= 4:
+                    year, month, supplier = parts[0], parts[1], parts[2]
+                else:
+                    year, month, supplier = "-", "-", "Desconocido"
+                
+                if year == current_year:
+                    total_invoices_ytd += 1
+                    supplier_counts[supplier] = supplier_counts.get(supplier, 0) + 1
+
+    sorted_suppliers = sorted(supplier_counts.items(), key=lambda x: x[1], reverse=True)
+    
+    top_10 = []
+    for rank, (supplier_name, count) in enumerate(sorted_suppliers[:10], 1):
+        pct = round((count / total_invoices_ytd * 100), 1) if total_invoices_ytd > 0 else 0
+        top_10.append({
+            "rank": rank,
+            "name": supplier_name,
+            "count": count,
+            "percentage": pct
+        })
+        
+    return jsonify({
+        "total_suppliers": total_suppliers,
+        "current_year": current_year,
+        "total_invoices_ytd": total_invoices_ytd,
+        "top_suppliers": top_10
+    })
 
 @app.route('/api/progress')
 def progress():

@@ -253,9 +253,31 @@
 
             <!-- Tab: Suppliers -->
             <section id="tab-suppliers" class="tab-pane fade-in" style="display: none;">
-                <header class="section-header">
-                    <h1>Proveedores Configurados</h1>
-                    <p>Lista de proveedores detectados y sus reglas de coincidencia.</p>
+                <header class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1>Proveedores Configurados</h1>
+                        <p>Lista de proveedores detectados y sus reglas de coincidencia.</p>
+                    </div>
+                    <div class="supplier-stats-wrapper">
+                        <button id="btn-supplier-stats" class="supplier-stats-pill" title="Ver desglose Top 10 proveedores con más facturas">
+                            <div class="pill-icon"><i class="fa-solid fa-users"></i></div>
+                            <span class="pill-label">Proveedores totales: <strong id="header-total-suppliers">0</strong></span>
+                            <i class="fa-solid fa-chevron-down pill-arrow"></i>
+                        </button>
+
+                        <div id="supplier-stats-dropdown" class="supplier-stats-dropdown glass-card">
+                            <div class="stats-dropdown-header">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <i class="fa-solid fa-trophy" style="color: #f59e0b;"></i>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">Top 10 Proveedores con Más Facturas</h4>
+                                </div>
+                                <span class="year-badge" id="stats-year-badge">Año 2026</span>
+                            </div>
+                            <div id="top-suppliers-list" class="top-suppliers-list">
+                                <!-- Filas dinámicas del Top 10 -->
+                            </div>
+                        </div>
+                    </div>
                 </header>
 
                 <div class="glass-card full-height-card">

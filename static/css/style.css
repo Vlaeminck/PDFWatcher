@@ -660,3 +660,215 @@ body {
     flex-grow: 1;
     background-color: #f1f5f9;
 }
+
+/* Supplier Stats Pill & Top 10 Dropdown */
+.supplier-stats-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.supplier-stats-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1.25rem;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(185, 28, 28, 0.1));
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 30px;
+    color: #f8fafc;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.15);
+    transition: all 0.3s ease;
+}
+
+.supplier-stats-pill:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(185, 28, 28, 0.25));
+    border-color: rgba(239, 68, 68, 0.7);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+    transform: translateY(-2px);
+}
+
+.supplier-stats-pill .pill-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(239, 68, 68, 0.3);
+    border-radius: 50%;
+    color: #fca5a5;
+    font-size: 0.85rem;
+}
+
+.supplier-stats-pill strong {
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-left: 3px;
+}
+
+.supplier-stats-pill .pill-arrow {
+    font-size: 0.8rem;
+    color: #fca5a5;
+    transition: transform 0.3s ease;
+}
+
+.supplier-stats-wrapper.active .pill-arrow {
+    transform: rotate(180deg);
+}
+
+.supplier-stats-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 380px;
+    max-width: 90vw;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 15px rgba(239, 68, 68, 0.1);
+    z-index: 100;
+    display: none;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.supplier-stats-dropdown.show {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.stats-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.85rem;
+    margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.year-badge {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.top-suppliers-list {
+    max-height: 320px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-right: 4px;
+}
+
+.top-suppliers-list::-webkit-scrollbar {
+    width: 5px;
+}
+.top-suppliers-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+
+.top-supplier-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+.top-supplier-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.rank-number {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+}
+
+.rank-1 {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+.rank-2 {
+    background: linear-gradient(135deg, #94a3b8, #64748b);
+    color: #fff;
+}
+.rank-3 {
+    background: linear-gradient(135deg, #b45309, #78350f);
+    color: #fff;
+}
+
+.supplier-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.supplier-name-text {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+
+.supplier-progress-bg {
+    height: 4px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.supplier-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444, #f87171);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+}
+
+.supplier-invoice-count {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.count-number {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #f87171;
+}
+
+.count-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
